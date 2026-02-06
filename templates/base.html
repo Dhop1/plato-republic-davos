@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The Republic - A Dark Academia course platform for studying Plato's masterwork with AI-powered tutoring.">
+    <title>{% block title %}The Republic{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <a href="/" class="nav-brand"><span>The</span> Republic</a>
+            <ul class="nav-links">
+                <li><a href="/" data-testid="link-library" id="nav-library">Library</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        function showToast(msg, type = 'info') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (type === 'error' ? ' error' : '');
+            setTimeout(() => { t.className = 'toast'; }, 3000);
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

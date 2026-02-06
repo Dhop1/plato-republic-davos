@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}The Republic - Library{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <div class="container">
+        <h1>The Republic</h1>
+        <p class="subtitle">"The measure of a man is what he does with power." &mdash; Study Plato's masterwork with an AI tutor that understands your texts.</p>
+        <div class="accent-line"></div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Course Library</h2>
+        </div>
+        <div id="courses-grid" class="card-grid">
+            <div class="empty-state">
+                <div class="spinner"></div>
+                <p>Loading courses...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <p>The Republic &mdash; A scholarly platform for the pursuit of wisdom</p>
+    </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const grid = document.getElementById('courses-grid');
+    
+    try {
+        const res = await fetch('/api/courses');
+        const courses = await res.json();
+        
+        if (courses.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">&#x1F4DA;</div>
+                    <p>No courses yet. The library awaits its first volumes.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        grid.innerHTML = courses.map(c => `
+            <a href="/course/${c.id}" class="card" data-testid="card-course-${c.id}" style="text-decoration:none;color:inherit;">
+                ${c.cover_image_url ? `<img class="card-image" src="${c.cover_image_url}" alt="${c.title}" loading="lazy">` : ''}
+                <div class="card-body">
+                    <h3>${c.title}</h3>
+                    <p>${c.description.length > 140 ? c.description.substring(0, 140) + '...' : c.description}</p>
+                    <div class="card-meta">
+                        <span class="badge badge-gold">Study</span>
+                    </div>
+                </div>
+            </a>
+        `).join('');
+    } catch (err) {
+        grid.innerHTML = `<div class="empty-state"><p>Failed to load courses.</p></div>`;
+    }
+});
+</script>
+{% endblock %}
