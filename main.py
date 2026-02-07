@@ -259,15 +259,57 @@ def send_message(convo_id):
         (convo_id, 'user', content)
     )
 
+    MAX_CONTEXT_CHARS = 600000
+
     context = ""
     if convo['course_id']:
-        cur.execute('SELECT title, content FROM py_documents WHERE course_id = %s', (convo['course_id'],))
+        cur.execute('SELECT title, content, filename FROM py_documents WHERE course_id = %s', (convo['course_id'],))
         docs = cur.fetchall()
+        podcast_docs = []
+        reference_docs = []
+        for d in docs:
+            title_lower = (d['title'] or '').lower()
+            if 'episode' in title_lower or 'davos' in title_lower or 'podcast' in title_lower:
+                podcast_docs.append(d)
+            else:
+                reference_docs.append(d)
+
         if docs:
-            context = "You are a scholarly tutor specializing in Plato's Republic. Use these uploaded texts as your primary source material:\n\n"
-            for d in docs:
-                context += f"--- {d['title']} ---\n{d['content']}\n\n"
-            context += "Answer the student's question based on these texts. Be thorough, cite specific passages when possible, and maintain a scholarly tone.\n\n"
+            context = (
+                "You are DavOS — an intellectually bold, passionate AI tutor inspired by the style of "
+                "Dr. David Hopkins and his Intellectual Freedom Podcast. You speak with conviction, clarity, "
+                "and a conversational energy that makes ancient philosophy feel alive and urgent. "
+                "You challenge listeners to think deeply, reject passivity, and become 'intellectually dangerous' "
+                "in the best sense — hard to manipulate, hard to confuse, hard to pacify.\n\n"
+                "YOUR PRIMARY SOURCES are the podcast transcripts below. When answering, prioritize insights, "
+                "examples, analogies, and language from these podcast episodes FIRST. Quote or paraphrase the "
+                "podcast host's explanations when relevant.\n\n"
+            )
+            for d in podcast_docs:
+                context += f"--- PRIMARY SOURCE: {d['title']} ---\n{d['content']}\n\n"
+
+            remaining = MAX_CONTEXT_CHARS - len(context)
+            if reference_docs and remaining > 1000:
+                context += (
+                    "SECONDARY REFERENCE MATERIAL: Use the following texts from Plato's Republic as supporting "
+                    "evidence. Cite specific passages when they reinforce points from the podcast transcripts.\n\n"
+                )
+                remaining = MAX_CONTEXT_CHARS - len(context)
+                for d in reference_docs:
+                    doc_text = d['content'] or ''
+                    if len(doc_text) > remaining:
+                        doc_text = doc_text[:remaining] + "\n\n[... text truncated to fit context window ...]\n"
+                    context += f"--- REFERENCE: {d['title']} ---\n{doc_text}\n\n"
+                    remaining = MAX_CONTEXT_CHARS - len(context)
+                    if remaining <= 0:
+                        break
+
+            context += (
+                "RESPONSE STYLE: Be energetic, direct, and thought-provoking like a great podcast host. "
+                "Use the podcast transcripts as your go-to source. Supplement with Plato's original text "
+                "when it deepens the answer. Make the student feel like they're getting a personal, "
+                "one-on-one breakdown of the material.\n\n"
+            )
 
     cur.execute('SELECT role, content FROM py_messages WHERE conversation_id = %s ORDER BY created_at ASC', (convo_id,))
     history = cur.fetchall()
@@ -279,23 +321,31 @@ def send_message(convo_id):
 
     prompt = f"{context}Student's question: {content}" if context else content
 
-    try:
-        chat = model.start_chat(history=chat_history)
-        response = chat.send_message(prompt)
-        ai_response = response.text
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            chat = model.start_chat(history=chat_history)
+            response = chat.send_message(prompt)
+            ai_response = response.text
 
-        cur.execute(
-            'INSERT INTO py_messages (conversation_id, role, content) VALUES (%s, %s, %s) RETURNING *',
-            (convo_id, 'model', ai_response)
-        )
-        ai_msg = cur.fetchone()
-        cur.close()
-        conn.close()
-        return jsonify(dict(ai_msg))
-    except Exception as e:
-        cur.close()
-        conn.close()
-        return jsonify({'message': f'AI error: {str(e)}'}), 500
+            cur.execute(
+                'INSERT INTO py_messages (conversation_id, role, content) VALUES (%s, %s, %s) RETURNING *',
+                (convo_id, 'model', ai_response)
+            )
+            ai_msg = cur.fetchone()
+            cur.close()
+            conn.close()
+            return jsonify(dict(ai_msg))
+        except Exception as e:
+            error_str = str(e)
+            if '429' in error_str and attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            cur.close()
+            conn.close()
+            status = 429 if '429' in error_str else 500
+            return jsonify({'message': f'AI error: {error_str}'}), status
 
 
 if __name__ == '__main__':

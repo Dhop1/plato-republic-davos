@@ -1,7 +1,7 @@
 # The Republic - Plato Study Platform
 
 ## Overview
-A Dark Academia-themed course platform for studying Plato's "The Republic" with an AI-powered tutor (Google Gemini). Users can upload text files (.txt, .md) and interact with an AI that uses uploaded documents as context for scholarly discussions.
+A Dark Academia-themed course platform for studying Plato's "The Republic" with the "DavOS" AI tutor (Google Gemini). Users can upload text files (.txt, .md) and interact with an AI that uses uploaded documents as context. The AI persona is "DavOS" — inspired by Dr. David Hopkins' Intellectual Freedom Podcast — prioritizing podcast transcripts as primary sources over generic reference texts.
 
 ## Architecture
 - **Backend**: Python Flask (main.py) running on port 5001 internally
@@ -29,6 +29,12 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `POST /api/conversations` - Create conversation
 - `GET /api/conversations/:id` - Get conversation with messages
 - `POST /api/conversations/:id/messages` - Send message to AI tutor
+
+## AI Prompt System
+- **Persona**: "DavOS" — energetic, intellectually bold AI tutor inspired by Dr. David Hopkins' podcast style
+- **Document priority**: Podcast transcripts (titles containing "episode", "davos", or "podcast") are PRIMARY sources; all other documents are SECONDARY reference material
+- **Context limit**: 600K characters max to stay within Gemini token limits; podcast docs get full inclusion, reference docs are truncated if needed
+- **Retry logic**: Automatic retry with exponential backoff on 429 rate-limit errors (up to 3 attempts)
 
 ## Design
 Dark Academia aesthetic: deep browns (#1a1410), forest greens, gold accents (#c5a55a), serif fonts (Playfair Display, Merriweather).
