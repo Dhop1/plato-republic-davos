@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Lesson - The Republic{% endblock %}
+
+{% block content %}
+<div class="app-layout" data-testid="layout-three-col">
+    <aside class="sidebar-left" id="sidebar-left" data-testid="sidebar-left">
+        <div class="sidebar-header">
+            <a href="/" class="nav-brand" data-testid="link-home"><span>The</span> Republic</a>
+        </div>
+        <div class="sidebar-body" id="nav-tree">
+            <div class="spinner-wrap"><div class="spinner"></div></div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="main-content" data-testid="main-content">
+        <div class="content-header" id="content-header">
+            <button class="sidebar-toggle" id="toggle-sidebar" data-testid="button-toggle-sidebar">&#9776;</button>
+            <div class="header-info">
+                <span class="header-module" id="header-module" data-testid="text-module-title"></span>
+                <h1 id="lesson-title" data-testid="text-lesson-title">Loading...</h1>
+            </div>
+        </div>
+
+        <div class="audio-bar" id="audio-bar" style="display:none;" data-testid="audio-player">
+            <audio id="audio-player" controls></audio>
+        </div>
+
+        <div class="transcript-area" id="transcript-area" data-testid="transcript-area">
+            <div class="spinner-wrap"><div class="spinner"></div></div>
+        </div>
+    </main>
+
+    <aside class="sidebar-right" id="sidebar-right" data-testid="sidebar-right">
+        <div class="chat-header-bar">
+            <div class="chat-avatar">D</div>
+            <div>
+                <div class="chat-name">DavOS</div>
+                <div class="chat-status">AI Tutor</div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages" data-testid="chat-messages">
+            <div class="chat-welcome" id="chat-welcome" data-testid="text-chat-welcome">
+                <div class="welcome-icon">D</div>
+                <p>Welcome. I'm <strong>DavOS</strong>, your AI tutor for this lesson. Ask me anything about the transcript, and I'll break it down for you.</p>
+            </div>
+        </div>
+
+        <div class="chat-input-bar">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Ask DavOS a question..." data-testid="input-chat-message">
+            <button id="chat-send" class="chat-send-btn" data-testid="button-send-message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+            </button>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const LESSON_ID = {{ lesson_id }};
+let currentConvoId = null;
+let isLoading = false;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadLesson();
+    await loadNavTree();
+    setupChat();
+    setupSidebarToggle();
+});
+
+async function loadLesson() {
+    const res = await fetch(`/api/lessons/${LESSON_ID}`);
+    const lesson = await res.json();
+
+    document.getElementById('lesson-title').textContent = lesson.title;
+    document.getElementById('header-module').textContent = lesson.module_title;
+    document.title = `${lesson.title} - The Republic`;
+
+    if (lesson.audio_url) {
+        document.getElementById('audio-bar').style.display = 'flex';
+        document.getElementById('audio-player').src = lesson.audio_url;
+    }
+
+    const area = document.getElementById('transcript-area');
+    if (lesson.transcript_text) {
+        area.innerHTML = '<div class="transcript-text">' + formatTranscript(lesson.transcript_text) + '</div>';
+    } else {
+        area.innerHTML = '<div class="empty-msg">No transcript available for this lesson.</div>';
+    }
+}
+
+function formatTranscript(text) {
+    return text
+        .replace(/^(# \*?\*?)(.*?)(\*?\*?\s*)$/gm, (m, pre, title, post) => {
+            let clean = title.replace(/\*/g, '').trim();
+            return `<h2 class="transcript-heading">${clean}</h2>`;
+        })
+        .replace(/^(### \*?\*?)(.*?)(\*?\*?\s*)$/gm, (m, pre, title, post) => {
+            let clean = title.replace(/\*/g, '').trim();
+            return `<h4 class="transcript-subheading">${clean}</h4>`;
+        })
+        .replace(/^---+$/gm, '<hr class="transcript-divider">')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n\n+/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+}
+
+async function loadNavTree() {
+    const lessonRes = await fetch(`/api/lessons/${LESSON_ID}`);
+    const lesson = await lessonRes.json();
+    const modRes = await fetch(`/api/courses/${lesson.course_id}/modules`);
+    const modules = await modRes.json();
+
+    const tree = document.getElementById('nav-tree');
+    let html = '';
+    modules.forEach(mod => {
+        const hasActive = mod.lessons && mod.lessons.some(l => l.id === LESSON_ID);
+        html += `<div class="nav-module ${hasActive ? 'open' : ''}">`;
+        html += `<button class="nav-module-btn ${hasActive ? 'active' : ''}" data-testid="nav-module-${mod.id}">${mod.title}</button>`;
+        html += '<ul class="nav-lessons">';
+        if (mod.lessons) {
+            mod.lessons.forEach(les => {
+                const isCurrent = les.id === LESSON_ID;
+                html += `<li><a href="/lesson/${les.id}" class="${isCurrent ? 'current' : ''}" data-testid="nav-lesson-${les.id}">${les.title}</a></li>`;
+            });
+        }
+        html += '</ul></div>';
+    });
+    tree.innerHTML = html;
+
+    tree.querySelectorAll('.nav-module-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.parentElement.classList.toggle('open');
+        });
+    });
+}
+
+function setupChat() {
+    document.getElementById('chat-send').addEventListener('click', sendMessage);
+    document.getElementById('chat-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+}
+
+function setupSidebarToggle() {
+    document.getElementById('toggle-sidebar').addEventListener('click', () => {
+        document.getElementById('sidebar-left').classList.toggle('collapsed');
+    });
+}
+
+function appendMessage(role, content) {
+    const area = document.getElementById('chat-messages');
+    const welcome = document.getElementById('chat-welcome');
+    if (welcome) welcome.style.display = 'none';
+
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+
+    const formatted = content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+
+    const avatar = role === 'user' ? 'You' : 'D';
+    div.innerHTML = `<div class="msg-avatar ${role}">${avatar}</div><div class="msg-body">${formatted}</div>`;
+    area.appendChild(div);
+    area.scrollTop = area.scrollHeight;
+}
+
+async function ensureConversation() {
+    if (currentConvoId) return currentConvoId;
+    const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'DavOS Chat', lessonId: LESSON_ID })
+    });
+    const convo = await res.json();
+    currentConvoId = convo.id;
+    return currentConvoId;
+}
+
+async function sendMessage() {
+    if (isLoading) return;
+    const input = document.getElementById('chat-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    input.value = '';
+    isLoading = true;
+
+    const sendBtn = document.getElementById('chat-send');
+    sendBtn.disabled = true;
+
+    appendMessage('user', content);
+
+    try {
+        const convoId = await ensureConversation();
+        const res = await fetch(`/api/conversations/${convoId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.message || 'Failed to get response', 'error');
+            return;
+        }
+
+        const msg = await res.json();
+        appendMessage('model', msg.content);
+    } catch (err) {
+        showToast('Failed to send message', 'error');
+    } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+</script>
+{% endblock %}

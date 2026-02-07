@@ -1,69 +1,66 @@
 {% extends "base.html" %}
-{% block title %}The Republic - Library{% endblock %}
+{% block title %}The Republic - DavOS Study Platform{% endblock %}
 
 {% block content %}
-<div class="hero">
-    <div class="container">
+<div class="landing">
+    <nav class="landing-nav">
+        <a href="/" class="nav-brand" data-testid="link-home"><span>The</span> Republic</a>
+        <span class="nav-tag">DavOS AI Tutor</span>
+    </nav>
+
+    <div class="landing-hero">
         <h1>The Republic</h1>
-        <p class="subtitle">"The measure of a man is what he does with power." &mdash; Study Plato's masterwork with an AI tutor that understands your texts.</p>
+        <p class="subtitle">"The measure of a man is what he does with power."</p>
+        <p class="desc">Study Plato's masterwork with DavOS — your intellectually dangerous AI tutor.</p>
         <div class="accent-line"></div>
     </div>
-</div>
 
-<div class="section">
-    <div class="container">
-        <div class="section-header">
-            <h2>Course Library</h2>
-        </div>
-        <div id="courses-grid" class="card-grid">
-            <div class="empty-state">
-                <div class="spinner"></div>
-                <p>Loading courses...</p>
-            </div>
+    <div class="landing-content">
+        <div id="course-area">
+            <div class="spinner-wrap"><div class="spinner"></div></div>
         </div>
     </div>
-</div>
 
-<footer class="footer">
-    <div class="container">
-        <p>The Republic &mdash; A scholarly platform for the pursuit of wisdom</p>
-    </div>
-</footer>
+    <footer class="landing-footer">
+        <p>The Republic &mdash; Inspired by Dr. David Hopkins' Intellectual Freedom Podcast</p>
+    </footer>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-    const grid = document.getElementById('courses-grid');
-    
+    const area = document.getElementById('course-area');
     try {
         const res = await fetch('/api/courses');
         const courses = await res.json();
-        
-        if (courses.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">&#x1F4DA;</div>
-                    <p>No courses yet. The library awaits its first volumes.</p>
-                </div>
-            `;
+        if (!courses.length) {
+            area.innerHTML = '<p class="empty-msg">No courses available.</p>';
             return;
         }
-        
-        grid.innerHTML = courses.map(c => `
-            <a href="/course/${c.id}" class="card" data-testid="card-course-${c.id}" style="text-decoration:none;color:inherit;">
-                ${c.cover_image_url ? `<img class="card-image" src="${c.cover_image_url}" alt="${c.title}" loading="lazy">` : ''}
-                <div class="card-body">
-                    <h3>${c.title}</h3>
-                    <p>${c.description.length > 140 ? c.description.substring(0, 140) + '...' : c.description}</p>
-                    <div class="card-meta">
-                        <span class="badge badge-gold">Study</span>
-                    </div>
-                </div>
-            </a>
-        `).join('');
+        const course = courses[0];
+        const modRes = await fetch(`/api/courses/${course.id}/modules`);
+        const modules = await modRes.json();
+
+        let html = `<h2 class="course-title" data-testid="text-course-title">${course.title}</h2>`;
+        html += `<p class="course-desc">${course.description}</p>`;
+        html += '<div class="module-grid">';
+        modules.forEach((mod, mi) => {
+            html += `<div class="module-card" data-testid="card-module-${mod.id}">`;
+            html += `<h3>${mod.title}</h3>`;
+            if (mod.lessons && mod.lessons.length) {
+                html += '<ul class="lesson-list">';
+                mod.lessons.forEach(les => {
+                    html += `<li><a href="/lesson/${les.id}" data-testid="link-lesson-${les.id}">${les.title}</a></li>`;
+                });
+                html += '</ul>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        area.innerHTML = html;
     } catch (err) {
-        grid.innerHTML = `<div class="empty-state"><p>Failed to load courses.</p></div>`;
+        area.innerHTML = '<p class="empty-msg">Failed to load course data.</p>';
     }
 });
 </script>

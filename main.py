@@ -1,19 +1,12 @@
 import os
+import time
 import psycopg2
 import psycopg2.extras
 import google.generativeai as genai
 from flask import Flask, request, jsonify, render_template
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key')
-
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-ALLOWED_EXTENSIONS = {'txt', 'md', 'text'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 genai.configure(api_key=os.environ['AI_INTEGRATIONS_GEMINI_API_KEY'])
 model = genai.GenerativeModel('gemini-2.5-flash')
@@ -28,8 +21,26 @@ def get_db():
 def init_db():
     conn = get_db()
     cur = conn.cursor()
+
+    cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='py_lessons')")
+    tables_exist = cur.fetchone()[0]
+
+    if tables_exist:
+        cur.execute('SELECT COUNT(*) FROM py_lessons')
+        if cur.fetchone()[0] > 0:
+            cur.close()
+            conn.close()
+            return
+
+    cur.execute('DROP TABLE IF EXISTS py_messages CASCADE')
+    cur.execute('DROP TABLE IF EXISTS py_conversations CASCADE')
+    cur.execute('DROP TABLE IF EXISTS py_documents CASCADE')
+    cur.execute('DROP TABLE IF EXISTS py_lessons CASCADE')
+    cur.execute('DROP TABLE IF EXISTS py_modules CASCADE')
+    cur.execute('DROP TABLE IF EXISTS py_courses CASCADE')
+
     cur.execute('''
-        CREATE TABLE IF NOT EXISTS py_courses (
+        CREATE TABLE py_courses (
             id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT NOT NULL,
@@ -38,25 +49,36 @@ def init_db():
         )
     ''')
     cur.execute('''
-        CREATE TABLE IF NOT EXISTS py_documents (
+        CREATE TABLE py_modules (
             id SERIAL PRIMARY KEY,
             course_id INTEGER REFERENCES py_courses(id) ON DELETE CASCADE,
             title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            filename TEXT,
+            sort_order INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     cur.execute('''
-        CREATE TABLE IF NOT EXISTS py_conversations (
+        CREATE TABLE py_lessons (
             id SERIAL PRIMARY KEY,
+            module_id INTEGER REFERENCES py_modules(id) ON DELETE CASCADE,
             title TEXT NOT NULL,
-            course_id INTEGER REFERENCES py_courses(id) ON DELETE CASCADE,
+            audio_url TEXT DEFAULT '',
+            transcript_text TEXT DEFAULT '',
+            summary TEXT DEFAULT '',
+            sort_order INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     cur.execute('''
-        CREATE TABLE IF NOT EXISTS py_messages (
+        CREATE TABLE py_conversations (
+            id SERIAL PRIMARY KEY,
+            lesson_id INTEGER REFERENCES py_lessons(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE py_messages (
             id SERIAL PRIMARY KEY,
             conversation_id INTEGER REFERENCES py_conversations(id) ON DELETE CASCADE,
             role TEXT NOT NULL,
@@ -64,53 +86,204 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    cur.execute('SELECT COUNT(*) FROM py_courses')
-    count = cur.fetchone()[0]
-    if count == 0:
-        cur.execute('''
-            INSERT INTO py_courses (title, description, cover_image_url) VALUES
-            (%s, %s, %s),
-            (%s, %s, %s),
-            (%s, %s, %s)
-        ''', (
-            'The Republic: Book I - Justice',
-            'Socrates discusses the meaning of justice with Cephalus, Polemarchus, and Thrasymachus. Is justice merely speaking the truth and paying debts, or is it the advantage of the stronger?',
-            'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800',
-            'The Republic: Book VII - The Cave',
-            'Plato\'s famous Allegory of the Cave concerning the nature of education and enlightenment. The journey from shadows on the wall to the brilliant light of the sun.',
-            'https://images.unsplash.com/photo-1535905557558-afc4877a26fc?w=800',
-            'The Republic: Book V - The Philosopher King',
-            'The argument that philosophers must become kings, or kings must learn philosophy. The nature of true knowledge versus mere opinion.',
-            'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800',
-        ))
+
+    cur.close()
+    conn.close()
+    seed_data()
+
+
+def seed_data():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO py_courses (title, description, cover_image_url) VALUES (%s, %s, %s) RETURNING id",
+        (
+            "The Republic by Plato",
+            "A comprehensive study of Plato's Republic guided by Dr. David Hopkins' Intellectual Freedom Podcast. "
+            "Explore justice, truth, power, and the nature of the soul through Socratic dialogue.",
+            "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800"
+        )
+    )
+    course_id = cur.fetchone()[0]
+
+    episodes_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads', 'episodes_1-7.md')
+    republic_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads', 'the_republic.md')
+
+    episode_chunks = []
+    if os.path.exists(episodes_path):
+        with open(episodes_path, 'r') as f:
+            full_text = f.read()
+        import re
+        splits = re.split(r'(^# (?:🎙️|✅).*$)', full_text, flags=re.MULTILINE)
+        current_title = None
+        current_body = ""
+        for part in splits:
+            if re.match(r'^# (?:🎙️|✅)', part):
+                if current_title:
+                    episode_chunks.append((current_title, current_body.strip()))
+                raw = re.sub(r'[🎙️✅*#]', '', part).strip()
+                raw = re.sub(r'^[\s:]+', '', raw)
+                current_title = raw
+                current_body = ""
+            else:
+                current_body += part
+        if current_title:
+            episode_chunks.append((current_title, current_body.strip()))
+
+    republic_text = ""
+    if os.path.exists(republic_path):
+        with open(republic_path, 'r') as f:
+            republic_text = f.read()
+
+    republic_books = {}
+    if republic_text:
+        import re
+        book_pattern = re.compile(r'^(BOOK [IVXLC]+)\.\s', re.MULTILINE)
+        book_positions = [(m.group(1), m.start()) for m in book_pattern.finditer(republic_text)]
+        for i, (book_name, start) in enumerate(book_positions):
+            end = book_positions[i + 1][1] if i + 1 < len(book_positions) else len(republic_text)
+            republic_books[book_name] = republic_text[start:end].strip()
+
+    module_data = [
+        {
+            "title": "Introduction to The Republic",
+            "lessons": [
+                {
+                    "title": "Becoming Dangerous: Why Plato's Republic is the Ultimate Guide",
+                    "episode_idx": 0,
+                    "republic_book": None
+                }
+            ]
+        },
+        {
+            "title": "Book I — Justice on Trial",
+            "lessons": [
+                {
+                    "title": "The Wild Beast of Politics: Tribalism & Power",
+                    "episode_idx": 1,
+                    "republic_book": "BOOK I"
+                }
+            ]
+        },
+        {
+            "title": "Book II — The Ring of Gyges",
+            "lessons": [
+                {
+                    "title": "Are You Moral, or Just Monitored?",
+                    "episode_idx": 2,
+                    "republic_book": "BOOK II"
+                }
+            ]
+        },
+        {
+            "title": "Book III — Education of the Guardians",
+            "lessons": [
+                {
+                    "title": "Plato on Education & Censorship",
+                    "episode_idx": None,
+                    "republic_book": "BOOK III"
+                }
+            ]
+        },
+        {
+            "title": "Book IV — The Soul's Architecture",
+            "lessons": [
+                {
+                    "title": "Reason, Spirit, and Appetite",
+                    "episode_idx": None,
+                    "republic_book": "BOOK IV"
+                }
+            ]
+        },
+        {
+            "title": "Book V — The Philosopher King",
+            "lessons": [
+                {
+                    "title": "Philosophers Must Become Kings",
+                    "episode_idx": None,
+                    "republic_book": "BOOK V"
+                }
+            ]
+        },
+        {
+            "title": "Book VI — The Divided Line",
+            "lessons": [
+                {
+                    "title": "Knowledge vs. Opinion",
+                    "episode_idx": None,
+                    "republic_book": "BOOK VI"
+                }
+            ]
+        },
+        {
+            "title": "Book VII — The Allegory of the Cave",
+            "lessons": [
+                {
+                    "title": "From Shadows to Sunlight",
+                    "episode_idx": None,
+                    "republic_book": "BOOK VII"
+                }
+            ]
+        },
+    ]
+
+    for mod_idx, mod in enumerate(module_data):
+        cur.execute(
+            "INSERT INTO py_modules (course_id, title, sort_order) VALUES (%s, %s, %s) RETURNING id",
+            (course_id, mod["title"], mod_idx)
+        )
+        module_id = cur.fetchone()[0]
+
+        for les_idx, les in enumerate(mod["lessons"]):
+            transcript = ""
+            summary = ""
+
+            ep_idx = les.get("episode_idx")
+            if ep_idx is not None and ep_idx < len(episode_chunks):
+                ep_title, ep_body = episode_chunks[ep_idx]
+                transcript = ep_body
+                summary = ep_body[:500] + "..." if len(ep_body) > 500 else ep_body
+
+            rb = les.get("republic_book")
+            if rb and rb in republic_books:
+                book_text = republic_books[rb]
+                if transcript:
+                    transcript += "\n\n--- PLATO'S ORIGINAL TEXT ---\n\n" + book_text
+                else:
+                    transcript = book_text
+                if not summary:
+                    summary = book_text[:500] + "..." if len(book_text) > 500 else book_text
+
+            cur.execute(
+                "INSERT INTO py_lessons (module_id, title, audio_url, transcript_text, summary, sort_order) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (module_id, les["title"], "", transcript, summary, les_idx)
+            )
+
     cur.close()
     conn.close()
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+# --- Page Routes ---
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
-@app.route('/course/<int:course_id>')
-def course_detail(course_id):
-    return render_template('course.html', course_id=course_id)
+@app.route('/lesson/<int:lesson_id>')
+def lesson_page(lesson_id):
+    return render_template('lesson.html', lesson_id=lesson_id)
 
 
-@app.route('/chat/<int:conversation_id>')
-def chat_page(conversation_id):
-    return render_template('chat.html', conversation_id=conversation_id)
-
+# --- API Routes ---
 
 @app.route('/api/courses', methods=['GET'])
 def get_courses():
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute('SELECT * FROM py_courses ORDER BY created_at DESC')
+    cur.execute('SELECT * FROM py_courses ORDER BY id')
     courses = cur.fetchall()
     cur.close()
     conn.close()
@@ -123,76 +296,67 @@ def get_course(course_id):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute('SELECT * FROM py_courses WHERE id = %s', (course_id,))
     course = cur.fetchone()
+    if not course:
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Course not found'}), 404
     cur.close()
     conn.close()
-    if not course:
-        return jsonify({'message': 'Course not found'}), 404
     return jsonify(dict(course))
 
 
-@app.route('/api/courses/<int:course_id>/documents', methods=['GET'])
-def get_documents(course_id):
+@app.route('/api/courses/<int:course_id>/modules', methods=['GET'])
+def get_modules(course_id):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute('SELECT * FROM py_documents WHERE course_id = %s ORDER BY created_at DESC', (course_id,))
-    docs = cur.fetchall()
+    cur.execute('''
+        SELECT m.*, 
+            (SELECT json_agg(json_build_object(
+                'id', l.id, 'title', l.title, 'sort_order', l.sort_order
+            ) ORDER BY l.sort_order)
+            FROM py_lessons l WHERE l.module_id = m.id) as lessons
+        FROM py_modules m 
+        WHERE m.course_id = %s 
+        ORDER BY m.sort_order
+    ''', (course_id,))
+    modules = cur.fetchall()
     cur.close()
     conn.close()
-    return jsonify([dict(d) for d in docs])
+    result = []
+    for m in modules:
+        md = dict(m)
+        md['lessons'] = md['lessons'] or []
+        result.append(md)
+    return jsonify(result)
 
 
-@app.route('/api/documents', methods=['POST'])
-def upload_document():
-    if 'file' not in request.files:
-        return jsonify({'message': 'No file provided'}), 400
-
-    file = request.files['file']
-    course_id = request.form.get('courseId')
-    title = request.form.get('title', '')
-
-    if not course_id:
-        return jsonify({'message': 'Course ID is required'}), 400
-    if file.filename == '':
-        return jsonify({'message': 'No file selected'}), 400
-    if not allowed_file(file.filename):
-        return jsonify({'message': 'Only .txt and .md files are allowed'}), 400
-
-    content = file.read().decode('utf-8')
-    filename = secure_filename(file.filename)
-    if not title:
-        title = filename
-
+@app.route('/api/lessons/<int:lesson_id>', methods=['GET'])
+def get_lesson(lesson_id):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute(
-        'INSERT INTO py_documents (course_id, title, content, filename) VALUES (%s, %s, %s, %s) RETURNING *',
-        (int(course_id), title, content, filename)
-    )
-    doc = cur.fetchone()
+    cur.execute('''
+        SELECT l.*, m.title as module_title, m.course_id,
+            c.title as course_title
+        FROM py_lessons l
+        JOIN py_modules m ON l.module_id = m.id
+        JOIN py_courses c ON m.course_id = c.id
+        WHERE l.id = %s
+    ''', (lesson_id,))
+    lesson = cur.fetchone()
+    if not lesson:
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Lesson not found'}), 404
     cur.close()
     conn.close()
-    return jsonify(dict(doc)), 201
+    return jsonify(dict(lesson))
 
 
-@app.route('/api/documents/<int:doc_id>', methods=['DELETE'])
-def delete_document(doc_id):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute('DELETE FROM py_documents WHERE id = %s', (doc_id,))
-    cur.close()
-    conn.close()
-    return '', 204
-
-
-@app.route('/api/conversations', methods=['GET'])
-def get_conversations():
-    course_id = request.args.get('courseId')
+@app.route('/api/lessons/<int:lesson_id>/conversations', methods=['GET'])
+def get_lesson_conversations(lesson_id):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    if course_id:
-        cur.execute('SELECT * FROM py_conversations WHERE course_id = %s ORDER BY created_at DESC', (int(course_id),))
-    else:
-        cur.execute('SELECT * FROM py_conversations ORDER BY created_at DESC')
+    cur.execute('SELECT * FROM py_conversations WHERE lesson_id = %s ORDER BY created_at DESC', (lesson_id,))
     convos = cur.fetchall()
     cur.close()
     conn.close()
@@ -203,13 +367,16 @@ def get_conversations():
 def create_conversation():
     data = request.get_json()
     title = data.get('title', 'New Dialogue')
-    course_id = data.get('courseId')
+    lesson_id = data.get('lessonId')
+
+    if not lesson_id:
+        return jsonify({'message': 'lessonId is required'}), 400
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(
-        'INSERT INTO py_conversations (title, course_id) VALUES (%s, %s) RETURNING *',
-        (title, course_id)
+        'INSERT INTO py_conversations (title, lesson_id) VALUES (%s, %s) RETURNING *',
+        (title, lesson_id)
     )
     convo = cur.fetchone()
     cur.close()
@@ -259,56 +426,38 @@ def send_message(convo_id):
         (convo_id, 'user', content)
     )
 
-    MAX_CONTEXT_CHARS = 600000
-
     context = ""
-    if convo['course_id']:
-        cur.execute('SELECT title, content, filename FROM py_documents WHERE course_id = %s', (convo['course_id'],))
-        docs = cur.fetchall()
-        podcast_docs = []
-        reference_docs = []
-        for d in docs:
-            title_lower = (d['title'] or '').lower()
-            if 'episode' in title_lower or 'davos' in title_lower or 'podcast' in title_lower:
-                podcast_docs.append(d)
-            else:
-                reference_docs.append(d)
+    if convo['lesson_id']:
+        cur.execute('''
+            SELECT l.title as lesson_title, l.transcript_text, l.summary,
+                   m.title as module_title, c.title as course_title
+            FROM py_lessons l
+            JOIN py_modules m ON l.module_id = m.id
+            JOIN py_courses c ON m.course_id = c.id
+            WHERE l.id = %s
+        ''', (convo['lesson_id'],))
+        lesson = cur.fetchone()
+        if lesson:
+            transcript = lesson['transcript_text'] or ''
+            if len(transcript) > 200000:
+                transcript = transcript[:200000] + "\n\n[... transcript truncated for context window ...]"
 
-        if docs:
             context = (
                 "You are DavOS — an intellectually bold, passionate AI tutor inspired by the style of "
                 "Dr. David Hopkins and his Intellectual Freedom Podcast. You speak with conviction, clarity, "
                 "and a conversational energy that makes ancient philosophy feel alive and urgent. "
                 "You challenge listeners to think deeply, reject passivity, and become 'intellectually dangerous' "
                 "in the best sense — hard to manipulate, hard to confuse, hard to pacify.\n\n"
-                "YOUR PRIMARY SOURCES are the podcast transcripts below. When answering, prioritize insights, "
-                "examples, analogies, and language from these podcast episodes FIRST. Quote or paraphrase the "
-                "podcast host's explanations when relevant.\n\n"
-            )
-            for d in podcast_docs:
-                context += f"--- PRIMARY SOURCE: {d['title']} ---\n{d['content']}\n\n"
-
-            remaining = MAX_CONTEXT_CHARS - len(context)
-            if reference_docs and remaining > 1000:
-                context += (
-                    "SECONDARY REFERENCE MATERIAL: Use the following texts from Plato's Republic as supporting "
-                    "evidence. Cite specific passages when they reinforce points from the podcast transcripts.\n\n"
-                )
-                remaining = MAX_CONTEXT_CHARS - len(context)
-                for d in reference_docs:
-                    doc_text = d['content'] or ''
-                    if len(doc_text) > remaining:
-                        doc_text = doc_text[:remaining] + "\n\n[... text truncated to fit context window ...]\n"
-                    context += f"--- REFERENCE: {d['title']} ---\n{doc_text}\n\n"
-                    remaining = MAX_CONTEXT_CHARS - len(context)
-                    if remaining <= 0:
-                        break
-
-            context += (
+                "You are a Socratic guide: ask probing follow-up questions, push the student to think deeper, "
+                "and connect ancient ideas to modern life.\n\n"
+                f"CURRENT LESSON: {lesson['lesson_title']} (Module: {lesson['module_title']})\n"
+                f"COURSE: {lesson['course_title']}\n\n"
+                "USE THIS TRANSCRIPT AS YOUR PRIMARY SOURCE. Quote from it, reference its arguments, "
+                "and use the host's language and examples when relevant:\n\n"
+                f"--- TRANSCRIPT ---\n{transcript}\n--- END TRANSCRIPT ---\n\n"
                 "RESPONSE STYLE: Be energetic, direct, and thought-provoking like a great podcast host. "
-                "Use the podcast transcripts as your go-to source. Supplement with Plato's original text "
-                "when it deepens the answer. Make the student feel like they're getting a personal, "
-                "one-on-one breakdown of the material.\n\n"
+                "Keep answers focused on THIS lesson's content. Make the student feel like they're getting "
+                "a personal, one-on-one breakdown of the material.\n\n"
             )
 
     cur.execute('SELECT role, content FROM py_messages WHERE conversation_id = %s ORDER BY created_at ASC', (convo_id,))
@@ -321,7 +470,6 @@ def send_message(convo_id):
 
     prompt = f"{context}Student's question: {content}" if context else content
 
-    import time
     max_retries = 3
     for attempt in range(max_retries):
         try:
