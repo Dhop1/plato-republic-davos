@@ -27,12 +27,21 @@ function proxyToFlask(req: Request, res: Response) {
     }
   });
 
+  const isFormData = (req.headers["content-type"] || "").includes("application/x-www-form-urlencoded");
+
   if (req.method === "GET" || req.method === "HEAD" || req.method === "DELETE") {
     proxyReq.end();
   } else if (isMultipart) {
     req.pipe(proxyReq, { end: true });
   } else if (req.rawBody) {
     proxyReq.write(req.rawBody as Buffer);
+    proxyReq.end();
+  } else if (isFormData && req.body && Object.keys(req.body).length > 0) {
+    const params = new URLSearchParams(req.body as Record<string, string>);
+    const bodyStr = params.toString();
+    proxyReq.setHeader("Content-Type", "application/x-www-form-urlencoded");
+    proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyStr));
+    proxyReq.write(bodyStr);
     proxyReq.end();
   } else if (req.body && Object.keys(req.body).length > 0) {
     const bodyStr = JSON.stringify(req.body);
@@ -67,6 +76,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.all("/api/*path", proxyToFlask);
   app.get("/static/*path", proxyToFlask);
   app.get("/lesson/:id", proxyToFlask);
+  app.all("/signup", proxyToFlask);
+  app.all("/login", proxyToFlask);
+  app.get("/logout", proxyToFlask);
+  app.get("/profile", proxyToFlask);
   app.get("/", proxyToFlask);
 
   return httpServer;

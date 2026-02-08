@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Citizen Profile - The Republic{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="profile-container">
+        <nav class="profile-nav">
+            <a href="/" class="auth-brand" data-testid="link-home"><span>The</span> Republic</a>
+            <a href="/logout" class="profile-logout" data-testid="link-logout">Sign Out</a>
+        </nav>
+
+        <div class="profile-header">
+            <div class="profile-avatar" data-testid="text-profile-initial" id="profile-initial"></div>
+            <h1 data-testid="text-profile-name" id="profile-name">Loading...</h1>
+            <p class="profile-role">Citizen of The Republic</p>
+        </div>
+
+        <div class="profile-section">
+            <h2>Account Details</h2>
+            <div class="profile-detail">
+                <span class="detail-label">Name</span>
+                <span class="detail-value" data-testid="text-detail-name" id="detail-name">—</span>
+            </div>
+            <div class="profile-detail">
+                <span class="detail-label">Email</span>
+                <span class="detail-value" data-testid="text-detail-email" id="detail-email">—</span>
+            </div>
+        </div>
+
+        <div class="profile-section">
+            <h2>Active Courses</h2>
+            <div id="active-courses" data-testid="list-active-courses">
+                <div class="spinner-wrap"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div class="profile-actions">
+            <a href="/" class="auth-btn" data-testid="link-browse-courses">Browse Courses</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetch('/api/auth/me');
+        const user = await res.json();
+        if (!user) {
+            window.location.href = '/login';
+            return;
+        }
+        document.getElementById('profile-name').textContent = user.name;
+        document.getElementById('profile-initial').textContent = user.name.charAt(0).toUpperCase();
+        document.getElementById('detail-name').textContent = user.name;
+        document.getElementById('detail-email').textContent = user.email;
+    } catch (err) {}
+
+    try {
+        const res = await fetch('/api/courses');
+        const courses = await res.json();
+        const area = document.getElementById('active-courses');
+        if (!courses.length) {
+            area.innerHTML = '<p class="empty-msg">No courses available yet.</p>';
+            return;
+        }
+        let html = '';
+        courses.forEach(c => {
+            html += `<div class="course-card-mini">
+                <h3>${c.title}</h3>
+                <p>${c.description}</p>
+            </div>`;
+        });
+        area.innerHTML = html;
+    } catch (err) {
+        document.getElementById('active-courses').innerHTML = '<p class="empty-msg">Failed to load courses.</p>';
+    }
+});
+</script>
+{% endblock %}

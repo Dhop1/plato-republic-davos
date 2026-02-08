@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Sign In - The Republic{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <a href="/" class="auth-brand" data-testid="link-home"><span>The</span> Republic</a>
+        <h1>Welcome Back</h1>
+        <p class="auth-subtitle">Sign in to continue your studies.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="auth-error" data-testid="text-flash-error">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/login" class="auth-form" data-testid="form-login">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="citizen@therepublic.edu" required data-testid="input-email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required data-testid="input-password">
+            </div>
+            <button type="submit" class="auth-btn" data-testid="button-login">Sign In</button>
+        </form>
+
+        <p class="auth-footer">New to The Republic? <a href="/signup" data-testid="link-signup">Join the Academy</a></p>
+    </div>
+</div>
+{% endblock %}

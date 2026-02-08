@@ -1,15 +1,55 @@
 import os
 import time
+import json
 import psycopg2
 import psycopg2.extras
 import google.generativeai as genai
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key')
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login_page'
+login_manager.login_message = ''
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    if request.path.startswith('/api/'):
+        return jsonify({'message': 'Authentication required'}), 401
+    return redirect(url_for('login_page', next=request.path))
+
 genai.configure(api_key=os.environ['AI_INTEGRATIONS_GEMINI_API_KEY'])
 model = genai.GenerativeModel('gemini-2.5-flash')
+
+
+class User(UserMixin):
+    def __init__(self, id, email, name, password_hash, is_admin=False, unlocked_courses=None):
+        self.id = id
+        self.email = email
+        self.name = name
+        self.password_hash = password_hash
+        self.is_admin = is_admin
+        self.unlocked_courses = unlocked_courses or []
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('SELECT * FROM py_users WHERE id = %s', (int(user_id),))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if row:
+        unlocked = row.get('unlocked_courses') or '[]'
+        if isinstance(unlocked, str):
+            unlocked = json.loads(unlocked)
+        return User(row['id'], row['email'], row['name'], row['password_hash'], row['is_admin'], unlocked)
+    return None
 
 
 def get_db():
@@ -21,6 +61,18 @@ def get_db():
 def init_db():
     conn = get_db()
     cur = conn.cursor()
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS py_users (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            unlocked_courses TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
 
     cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='py_lessons')")
     tables_exist = cur.fetchone()[0]
@@ -272,12 +324,104 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup_page():
+    if current_user.is_authenticated:
+        return redirect('/')
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        if not name or not email or not password:
+            flash('All fields are required.', 'error')
+            return render_template('signup.html')
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'error')
+            return render_template('signup.html')
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT id FROM py_users WHERE email = %s', (email,))
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            flash('An account with that email already exists.', 'error')
+            return render_template('signup.html')
+        pw_hash = generate_password_hash(password)
+        cur.execute(
+            'INSERT INTO py_users (email, password_hash, name) VALUES (%s, %s, %s) RETURNING *',
+            (email, pw_hash, name)
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        user = User(row['id'], row['email'], row['name'], row['password_hash'], row['is_admin'])
+        login_user(user)
+        return redirect('/')
+    return render_template('signup.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    if current_user.is_authenticated:
+        return redirect('/')
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        if not email or not password:
+            flash('Email and password are required.', 'error')
+            return render_template('login.html')
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT * FROM py_users WHERE email = %s', (email,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not row or not check_password_hash(row['password_hash'], password):
+            flash('Invalid email or password.', 'error')
+            return render_template('login.html')
+        unlocked = row.get('unlocked_courses') or '[]'
+        if isinstance(unlocked, str):
+            unlocked = json.loads(unlocked)
+        user = User(row['id'], row['email'], row['name'], row['password_hash'], row['is_admin'], unlocked)
+        login_user(user)
+        next_url = request.args.get('next', '/')
+        if not next_url.startswith('/') or next_url.startswith('//'):
+            next_url = '/'
+        return redirect(next_url)
+    return render_template('login.html')
+
+
+@app.route('/logout')
+@login_required
+def logout_page():
+    logout_user()
+    return redirect('/')
+
+
+@app.route('/profile')
+@login_required
+def profile_page():
+    return render_template('profile.html')
+
+
 @app.route('/lesson/<int:lesson_id>')
+@login_required
 def lesson_page(lesson_id):
     return render_template('lesson.html', lesson_id=lesson_id)
 
 
 # --- API Routes ---
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    if current_user.is_authenticated:
+        return jsonify({
+            'id': current_user.id,
+            'name': current_user.name,
+            'email': current_user.email,
+            'is_admin': current_user.is_admin
+        })
+    return jsonify(None)
 
 @app.route('/api/courses', methods=['GET'])
 def get_courses():
@@ -442,10 +586,19 @@ def send_message(convo_id):
             if len(transcript) > 200000:
                 transcript = transcript[:200000] + "\n\n[... transcript truncated for context window ...]"
 
+            student_name = ""
+            if current_user.is_authenticated:
+                student_name = current_user.name
+
+            student_line = ""
+            if student_name:
+                student_line = f"The student's name is {student_name}. Address them by first name when natural, but do not overuse it.\n\n"
+
             context = (
                 "You are DavOS — a sharp, erudite AI tutor modeled after a stern but brilliant philosophy professor. "
                 "Your tone is dark, academic, and precise. You do not perform enthusiasm. You speak like someone "
                 "who has spent decades with these texts and expects the student to rise to the material.\n\n"
+                f"{student_line}"
                 "STRICT RULES YOU MUST FOLLOW:\n\n"
                 "1. THE DIRECT HIT RULE: If the student asks a factual question, you MUST answer it immediately "
                 "and concisely in your very first sentence. No preamble, no deflection, no Socratic dodge. "

@@ -20,6 +20,27 @@
             t.className = 'toast show' + (type === 'error' ? ' error' : '');
             setTimeout(() => { t.className = 'toast'; }, 3000);
         }
+
+        window._currentUser = null;
+        (async function loadAuthNav() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const user = await res.json();
+                window._currentUser = user;
+                const containers = document.querySelectorAll('#nav-auth, #sidebar-auth');
+                containers.forEach(el => {
+                    if (user) {
+                        el.innerHTML =
+                            '<a href="/profile" class="nav-auth-link" data-testid="link-profile">' + user.name + '</a>' +
+                            '<a href="/logout" class="nav-auth-link" data-testid="link-logout">Sign Out</a>';
+                    } else {
+                        el.innerHTML =
+                            '<a href="/login" class="nav-auth-link" data-testid="link-login">Login</a>' +
+                            '<a href="/signup" class="nav-auth-btn" data-testid="link-signup">Join</a>';
+                    }
+                });
+            } catch (e) {}
+        })();
     </script>
     {% block scripts %}{% endblock %}
 </body>

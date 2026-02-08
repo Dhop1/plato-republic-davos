@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Join The Republic{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <a href="/" class="auth-brand" data-testid="link-home"><span>The</span> Republic</a>
+        <h1>Join the Academy</h1>
+        <p class="auth-subtitle">Create your account to begin studying with DavOS.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="auth-error" data-testid="text-flash-error">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/signup" class="auth-form" data-testid="form-signup">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" placeholder="e.g. Marcus Aurelius" required data-testid="input-name">
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="citizen@therepublic.edu" required data-testid="input-email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="At least 6 characters" minlength="6" required data-testid="input-password">
+            </div>
+            <button type="submit" class="auth-btn" data-testid="button-signup">Create Account</button>
+        </form>
+
+        <p class="auth-footer">Already a citizen? <a href="/login" data-testid="link-login">Sign in</a></p>
+    </div>
+</div>
+{% endblock %}

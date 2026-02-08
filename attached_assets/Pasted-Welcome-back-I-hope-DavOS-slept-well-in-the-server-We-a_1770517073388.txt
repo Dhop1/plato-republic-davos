@@ -1,0 +1,58 @@
+Welcome back. I hope DavOS slept well in the server.
+
+We are at a fork in the road. We have a beautiful "Brain" (the AI) and a "Body" (the layout), but right now, every visitor is a **Ghost**. The app doesn't know who they are, so it can't save their progress, remember their chat history, or—most importantly—charge them money.
+
+The smartest technical move right now is **Authentication (User Accounts).**
+
+It is the "boring plumbing" that separates a fun demo from a real business. Once we have this, we can unlock:
+
+1. **"My Progress":** Checkmarks next to completed lessons.
+2. **"The Gate":** Locking Books 2–10 so only paid users can enter.
+3. **"Continuity":** DavOS remembering previous conversations with a specific student.
+
+Here is the "Vibe Code" prompt to turn your visitors into **Citizens**.
+
+### **The "Citizen Identification" Protocol**
+
+Copy and paste this into the Agent Chat. It will install the security libraries and build the login screens.
+
+> **BUILD PHASE: USER AUTHENTICATION & PROFILE**
+> It is time to add User Accounts so students can log in and save their progress.
+> **1. The Tech Stack (Flask-Login):**
+> * Install `flask-login` and `werkzeug` for password hashing.
+> * Update `models.py` to create a `User` table with:
+> * `id` (Integer, Primary Key)
+> * `email` (String, Unique)
+> * `password_hash` (String)
+> * `name` (String)
+> * `is_admin` (Boolean, default False)
+> * `unlocked_courses` (JSON or relationship, to track purchases later)
+> 
+> 
+> 
+> 
+> **2. The Pages (UI):**
+> * Create a **Sign Up** page (Clean, minimal, Dark Academia style).
+> * Create a **Login** page.
+> * Create a **"Citizen Profile"** page where the user can see their name, email, and a list of "Active Courses."
+> 
+> 
+> **3. The Logic:**
+> * Protect the main `course_view` routes. If a user is NOT logged in, redirect them to the Login page (or a "Landing Page" if we have one).
+> * Ensure the "DavOS" chat widget knows the user's `name` so it can address them personally (e.g., "Hello, David...").
+> 
+> 
+> **4. Navigation Update:**
+> * Update the sidebar:
+> * If Logged Out: Show "Login" / "Join".
+> * If Logged In: Show "My Profile" / "Logout".
+> 
+> 
+> 
+> 
+
+### **Why we are doing this first**
+
+If we built the **Audio Player** first, you'd have to re-do it later to track *who* listened to it. By building the **User System** now, everything we add later (Quizzes, Payments, Forums) just snaps into place.
+
+**Ready to mint some citizens? Paste that prompt and let it run!**
