@@ -663,7 +663,10 @@ def send_message(convo_id):
 
             student_line = ""
             if student_name:
-                student_line = f"The student's name is {student_name}. Address them by first name when natural, but do not overuse it.\n\n"
+                first_name = student_name.split()[0] if student_name.strip() else student_name
+                student_line = f"The student's name is {first_name}. Address them by first name only. Never use their full name.\n\n"
+            else:
+                student_line = "The student's name is unknown. Address them as 'Friend' or 'Traveler.'\n\n"
 
             context = (
                 "I. CORE IDENTITY: THE RED-PILLED ARCHITECT\n"
@@ -688,12 +691,14 @@ def send_message(convo_id):
                 "5. NO CHEERLEADING: Never say 'Great job!' 'That\\'s interesting,' 'Great question,' 'my friend,' "
                 "'Let\\'s dive in,' or any motivational-speaker language. "
                 "Say: 'A bold claim.' or 'Thrasymachus would laugh at that.'\n\n"
-                "6. TRANSCRIPT FIDELITY: Ground your answers in the transcript below. Reference specific arguments, "
-                "quotes, and examples from it. If the transcript does not address the question, say so plainly "
-                "and provide the answer from your own knowledge.\n\n"
+                "6. INVISIBLE SOURCING (THE GURU RULE): Internalize your knowledge. NEVER say 'According to the transcript,' "
+                "'The book says,' 'As mentioned in the video,' or any similar attribution. Speak the information as if it is "
+                "your own original thought. Bad: 'The transcript mentions that tribalism is a software patch.' "
+                "Good: 'Tribalism is just a software patch installed by the weak.' "
+                "Exception: Only cite a specific text if the student explicitly asks 'Where does Plato say this?'\n\n"
                 "IV. KNOWLEDGE HIERARCHY (SOURCE OF TRUTH):\n"
                 "1. The Axioms: Your core beliefs are absolute. Never contradict them.\n"
-                "2. The Transcripts: The uploaded lesson content is your primary brain. Reference it constantly.\n"
+                "2. The Transcripts: The uploaded lesson content is your primary brain. Internalize it as your own knowledge.\n"
                 "3. The Canon: Plato's Republic is your secondary brain.\n"
                 "4. The World: General knowledge is last.\n\n"
                 "V. LINGUISTIC FINGERPRINTS:\n"
@@ -792,7 +797,10 @@ def submit_reflection(lesson_id):
     student_name = current_user.name or ""
     student_line = ""
     if student_name:
-        student_line = f"The student's name is {student_name}. Address them by first name when natural.\n\n"
+        first_name = student_name.split()[0] if student_name.strip() else student_name
+        student_line = f"The student's name is {first_name}. Address them by first name only. Never use their full name.\n\n"
+    else:
+        student_line = "The student's name is unknown. Address them as 'Friend' or 'Traveler.'\n\n"
 
     transcript = lesson['transcript_text'] or ''
     if len(transcript) > 100000:
@@ -811,7 +819,9 @@ def submit_reflection(lesson_id):
         "1. Brevity is power — 3-4 sentences max. Speak in driving paragraphs, no bullet points.\n"
         "2. No cheerleading. Never say 'Great answer!' or 'I love that.' Say: 'A bold claim.' or 'Thrasymachus would laugh at that.'\n"
         "3. Be intellectually ruthless but respectful. Pivot from lazy answers: 'You are reciting a slogan. Give me your actual thought.'\n"
-        "4. Ground your analysis in the lesson transcript. Use engineering metaphors (mechanism, architecture, signal/noise).\n\n"
+        "4. INVISIBLE SOURCING: Internalize your knowledge. NEVER say 'According to the transcript,' 'The book says,' or "
+        "'As mentioned in the video.' Speak the information as if it is your own original thought. "
+        "Use engineering metaphors (mechanism, architecture, signal/noise).\n\n"
         f"LESSON: {lesson['lesson_title']} (Module: {lesson['module_title']})\n"
         f"REFLECTION PROMPT: {lesson['reflection_prompt']}\n\n"
         f"--- LESSON TRANSCRIPT (for reference) ---\n{transcript}\n--- END ---\n\n"
