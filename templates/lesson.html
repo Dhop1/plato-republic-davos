@@ -22,6 +22,12 @@
             </div>
         </div>
 
+        <div class="video-theater" id="video-theater" style="display:none;" data-testid="video-theater">
+            <div class="video-responsive">
+                <iframe id="video-player" data-testid="video-player" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+        </div>
+
         <div class="audio-bar" id="audio-bar" style="display:none;" data-testid="audio-player">
             <audio id="audio-player" controls></audio>
         </div>
@@ -70,6 +76,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSidebarToggle();
 });
 
+function parseYouTubeId(url) {
+    if (!url) return null;
+    const patterns = [
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
+    ];
+    for (const p of patterns) {
+        const m = url.match(p);
+        if (m) return m[1];
+    }
+    return null;
+}
+
 async function loadLesson() {
     const res = await fetch(`/api/lessons/${LESSON_ID}`);
     const lesson = await res.json();
@@ -77,6 +97,14 @@ async function loadLesson() {
     document.getElementById('lesson-title').textContent = lesson.title;
     document.getElementById('header-module').textContent = lesson.module_title;
     document.title = `${lesson.title} - The Republic`;
+
+    if (lesson.video_url) {
+        const videoId = parseYouTubeId(lesson.video_url);
+        if (videoId) {
+            document.getElementById('video-theater').style.display = 'block';
+            document.getElementById('video-player').src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`;
+        }
+    }
 
     if (lesson.audio_url) {
         document.getElementById('audio-bar').style.display = 'flex';

@@ -26,7 +26,7 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - **py_users**: id, email (unique), password_hash, name, is_admin, unlocked_courses (JSON string), created_at
 - **py_courses**: id, title, description, cover_image_url
 - **py_modules**: id, course_id (FK), title, sort_order — one per Book of The Republic
-- **py_lessons**: id, module_id (FK), title, audio_url, transcript_text, summary, sort_order
+- **py_lessons**: id, module_id (FK), title, audio_url, video_url, transcript_text, summary, sort_order
 - **py_conversations**: id, lesson_id (FK), title
 - **py_messages**: id, conversation_id (FK), role, content
 
