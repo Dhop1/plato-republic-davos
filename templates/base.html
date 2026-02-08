@@ -31,6 +31,7 @@
                 containers.forEach(el => {
                     if (user) {
                         el.innerHTML =
+                            (user.is_admin ? '<a href="/admin" class="nav-auth-link" data-testid="link-admin-dashboard">Dashboard</a>' : '') +
                             '<a href="/profile" class="nav-auth-link" data-testid="link-profile">' + user.name + '</a>' +
                             '<a href="/logout" class="nav-auth-link" data-testid="link-logout">Sign Out</a>';
                     } else {
