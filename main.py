@@ -115,6 +115,7 @@ def init_db():
             module_id INTEGER REFERENCES py_modules(id) ON DELETE CASCADE,
             title TEXT NOT NULL,
             audio_url TEXT DEFAULT '',
+            video_url TEXT DEFAULT '',
             transcript_text TEXT DEFAULT '',
             summary TEXT DEFAULT '',
             sort_order INTEGER DEFAULT 0,
@@ -204,7 +205,8 @@ def seed_data():
                 {
                     "title": "Becoming Dangerous: Why Plato's Republic is the Ultimate Guide",
                     "episode_idx": 0,
-                    "republic_book": None
+                    "republic_book": None,
+                    "video_url": "https://youtu.be/sN9a1YVDa0s"
                 }
             ]
         },
@@ -214,7 +216,8 @@ def seed_data():
                 {
                     "title": "The Wild Beast of Politics: Tribalism & Power",
                     "episode_idx": 1,
-                    "republic_book": "BOOK I"
+                    "republic_book": "BOOK I",
+                    "video_url": "https://youtu.be/gM8wQ3WPvqU"
                 }
             ]
         },
@@ -224,7 +227,8 @@ def seed_data():
                 {
                     "title": "Are You Moral, or Just Monitored?",
                     "episode_idx": 2,
-                    "republic_book": "BOOK II"
+                    "republic_book": "BOOK II",
+                    "video_url": "https://youtu.be/1jfsGmNk788"
                 }
             ]
         },
@@ -234,7 +238,8 @@ def seed_data():
                 {
                     "title": "Plato on Education & Censorship",
                     "episode_idx": None,
-                    "republic_book": "BOOK III"
+                    "republic_book": "BOOK III",
+                    "video_url": "https://youtu.be/RI-OD8c8yh8"
                 }
             ]
         },
@@ -244,7 +249,8 @@ def seed_data():
                 {
                     "title": "Reason, Spirit, and Appetite",
                     "episode_idx": None,
-                    "republic_book": "BOOK IV"
+                    "republic_book": "BOOK IV",
+                    "video_url": "https://youtu.be/1UK2tILzl4Y"
                 }
             ]
         },
@@ -254,7 +260,8 @@ def seed_data():
                 {
                     "title": "Philosophers Must Become Kings",
                     "episode_idx": None,
-                    "republic_book": "BOOK V"
+                    "republic_book": "BOOK V",
+                    "video_url": "https://youtu.be/GqIwXPGIrg8"
                 }
             ]
         },
@@ -264,7 +271,8 @@ def seed_data():
                 {
                     "title": "Knowledge vs. Opinion",
                     "episode_idx": None,
-                    "republic_book": "BOOK VI"
+                    "republic_book": "BOOK VI",
+                    "video_url": ""
                 }
             ]
         },
@@ -274,7 +282,8 @@ def seed_data():
                 {
                     "title": "From Shadows to Sunlight",
                     "episode_idx": None,
-                    "republic_book": "BOOK VII"
+                    "republic_book": "BOOK VII",
+                    "video_url": ""
                 }
             ]
         },
@@ -308,9 +317,9 @@ def seed_data():
                     summary = book_text[:500] + "..." if len(book_text) > 500 else book_text
 
             cur.execute(
-                "INSERT INTO py_lessons (module_id, title, audio_url, transcript_text, summary, sort_order) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (module_id, les["title"], "", transcript, summary, les_idx)
+                "INSERT INTO py_lessons (module_id, title, audio_url, video_url, transcript_text, summary, sort_order) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (module_id, les["title"], "", les.get("video_url", ""), transcript, summary, les_idx)
             )
 
     cur.close()
