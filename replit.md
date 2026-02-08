@@ -20,14 +20,16 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `templates/signup.html` - Sign up page (Dark Academia style)
 - `templates/login.html` - Login page
 - `templates/profile.html` - Citizen Profile page showing user info and active courses
+- `templates/admin.html` - Admin Dashboard ("God Mode") with Student Roster and Mind Feed
 - `static/css/style.css` - Dark Academia theme CSS
+- `promote_admin.py` - CLI utility to promote a user to admin by email
 
 ## Database Schema
 - **py_users**: id, email (unique), password_hash, name, is_admin, unlocked_courses (JSON string), created_at
 - **py_courses**: id, title, description, cover_image_url
 - **py_modules**: id, course_id (FK), title, sort_order — one per Book of The Republic
 - **py_lessons**: id, module_id (FK), title, audio_url, video_url, transcript_text, summary, sort_order, reflection_prompt
-- **py_conversations**: id, lesson_id (FK), title
+- **py_conversations**: id, lesson_id (FK), user_id (FK, nullable), title, created_at
 - **py_messages**: id, conversation_id (FK), role, content
 - **py_user_reflections**: id, user_id (FK), lesson_id (FK), answer, feedback, created_at — UNIQUE(user_id, lesson_id)
 - **py_user_progress**: id, user_id (FK), lesson_id (FK), is_completed, completed_at — UNIQUE(user_id, lesson_id)
@@ -38,6 +40,7 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `GET /login` / `POST /login` - Login form
 - `GET /logout` - Log out and redirect home
 - `GET /profile` - Citizen Profile page (login required)
+- `GET /admin` - Admin Dashboard (admin required, redirects non-admins to home with flash)
 - `GET /lesson/:id` - Lesson view (login required, redirects to login if unauthenticated)
 
 ## API Routes
@@ -51,6 +54,8 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `GET /api/conversations/:id` - Get conversation with messages
 - `POST /api/conversations/:id/messages` - Send message to DavOS AI tutor
 - `POST /api/conversations/:id/messages/inject` - Inject a message into conversation history (JSON: {role, content})
+- `GET /api/admin/students` - List all users with progress (admin required)
+- `GET /api/admin/mind-feed` - Recent student-DavOS exchanges (admin required)
 - `GET /api/lessons/:id/reflection` - Get user's reflection for a lesson (login required)
 - `POST /api/lessons/:id/reflection` - Submit reflection for DavOS analysis (JSON: {answer}, login required)
 - `GET /api/lessons/:id/progress` - Get completion status (login required)

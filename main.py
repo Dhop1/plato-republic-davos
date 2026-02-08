@@ -128,6 +128,7 @@ def init_db():
         CREATE TABLE py_conversations (
             id SERIAL PRIMARY KEY,
             lesson_id INTEGER REFERENCES py_lessons(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES py_users(id),
             title TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -560,8 +561,8 @@ def create_conversation():
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(
-        'INSERT INTO py_conversations (title, lesson_id) VALUES (%s, %s) RETURNING *',
-        (title, lesson_id)
+        'INSERT INTO py_conversations (title, lesson_id, user_id) VALUES (%s, %s, %s) RETURNING *',
+        (title, lesson_id, current_user.id if current_user.is_authenticated else None)
     )
     convo = cur.fetchone()
     cur.close()
@@ -887,6 +888,100 @@ def get_all_progress():
     conn.close()
     completed = [r['lesson_id'] for r in rows]
     return jsonify(completed)
+
+
+# --- Admin Dashboard ---
+
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('login_page', next=request.path))
+        if not current_user.is_admin:
+            flash('Access Denied', 'error')
+            return redirect('/')
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/admin')
+@admin_required
+def admin_page():
+    return render_template('admin.html')
+
+
+@app.route('/api/admin/students', methods=['GET'])
+@admin_required
+def admin_students():
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('SELECT COUNT(*) as total FROM py_lessons')
+    total_lessons = cur.fetchone()['total']
+    cur.execute('''
+        SELECT u.id, u.name, u.email, u.is_admin, u.created_at,
+            (SELECT COUNT(*) FROM py_user_progress p
+             WHERE p.user_id = u.id AND p.is_completed = TRUE) as completed_count
+        FROM py_users u
+        ORDER BY u.created_at DESC
+    ''')
+    students = cur.fetchall()
+    cur.close()
+    conn.close()
+    result = []
+    for s in students:
+        result.append({
+            'id': s['id'],
+            'name': s['name'],
+            'email': s['email'],
+            'is_admin': s['is_admin'],
+            'created_at': s['created_at'].isoformat() if s['created_at'] else None,
+            'completed_count': s['completed_count'],
+            'total_lessons': total_lessons
+        })
+    return jsonify(result)
+
+
+@app.route('/api/admin/mind-feed', methods=['GET'])
+@admin_required
+def admin_mind_feed():
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('''
+        SELECT um.id, um.content as student_message,
+               reply.content as davos_reply,
+               l.title as lesson_title,
+               u.name as user_name
+        FROM py_messages um
+        JOIN py_conversations c ON um.conversation_id = c.id
+        JOIN py_lessons l ON c.lesson_id = l.id
+        LEFT JOIN py_users u ON c.user_id = u.id
+        LEFT JOIN LATERAL (
+            SELECT m2.content
+            FROM py_messages m2
+            WHERE m2.conversation_id = um.conversation_id
+              AND m2.id > um.id
+              AND m2.role = 'model'
+            ORDER BY m2.id ASC
+            LIMIT 1
+        ) reply ON TRUE
+        WHERE um.role = 'user'
+        ORDER BY um.id DESC
+        LIMIT 50
+    ''')
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    feed = []
+    for r in rows:
+        feed.append({
+            'user_name': r['user_name'] or 'Unknown',
+            'lesson_title': r['lesson_title'],
+            'student_message': (r['student_message'] or '')[:300],
+            'davos_reply': (r['davos_reply'] or '')[:300],
+        })
+    return jsonify(feed)
 
 
 if __name__ == '__main__':
