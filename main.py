@@ -1,6 +1,7 @@
 import os
 import time
 import json
+from datetime import datetime
 import psycopg2
 import psycopg2.extras
 import google.generativeai as genai
@@ -116,6 +117,7 @@ def init_db():
             title TEXT NOT NULL,
             audio_url TEXT DEFAULT '',
             video_url TEXT DEFAULT '',
+            reflection_prompt TEXT DEFAULT '',
             transcript_text TEXT DEFAULT '',
             summary TEXT DEFAULT '',
             sort_order INTEGER DEFAULT 0,
@@ -137,6 +139,28 @@ def init_db():
             role TEXT NOT NULL,
             content TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS py_user_reflections (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES py_users(id) ON DELETE CASCADE,
+            lesson_id INTEGER REFERENCES py_lessons(id) ON DELETE CASCADE,
+            answer TEXT NOT NULL,
+            feedback TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, lesson_id)
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS py_user_progress (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES py_users(id) ON DELETE CASCADE,
+            lesson_id INTEGER REFERENCES py_lessons(id) ON DELETE CASCADE,
+            is_completed BOOLEAN DEFAULT FALSE,
+            completed_at TIMESTAMP,
+            UNIQUE(user_id, lesson_id)
         )
     ''')
 
@@ -206,7 +230,8 @@ def seed_data():
                     "title": "Becoming Dangerous: Why Plato's Republic is the Ultimate Guide",
                     "episode_idx": 0,
                     "republic_book": None,
-                    "video_url": "https://youtu.be/sN9a1YVDa0s"
+                    "video_url": "https://youtu.be/sN9a1YVDa0s",
+                    "reflection_prompt": "We often think of the past as 'primitive' and the present as 'enlightened.' But Socrates argues that human nature never changes\u2014only the technology does. Look at the current political chaos in the world. Is it new? Or are we just re-living the same cycles of Athens? If human nature is fixed, can we ever truly 'progress,' or are we doomed to repeat history?"
                 }
             ]
         },
@@ -217,7 +242,8 @@ def seed_data():
                     "title": "The Wild Beast of Politics: Tribalism & Power",
                     "episode_idx": 1,
                     "republic_book": "BOOK I",
-                    "video_url": "https://youtu.be/gM8wQ3WPvqU"
+                    "video_url": "https://youtu.be/gM8wQ3WPvqU",
+                    "reflection_prompt": "Polemarchus defines Justice as 'doing good to friends and harm to enemies.' This is the basis of Tribalism (and modern partisan politics). Socrates rejects this. Why? Is it possible to have a society where we don't favor our 'tribe' (our party/nation) over others? Is true impartiality actually possible for human beings?"
                 }
             ]
         },
@@ -228,7 +254,8 @@ def seed_data():
                     "title": "Are You Moral, or Just Monitored?",
                     "episode_idx": 2,
                     "republic_book": "BOOK II",
-                    "video_url": "https://youtu.be/1jfsGmNk788"
+                    "video_url": "https://youtu.be/1jfsGmNk788",
+                    "reflection_prompt": "If you possessed the Ring of Gyges (total invisibility with zero consequences), would you still be a 'good' person? Be 100% honest. If you knew you could steal wealth, access power, or crush your enemies and never be caught, what would stop you? If your answer is 'nothing,' does that mean your morality is just fear of the police?"
                 }
             ]
         },
@@ -239,7 +266,8 @@ def seed_data():
                     "title": "Plato on Education & Censorship",
                     "episode_idx": None,
                     "republic_book": "BOOK III",
-                    "video_url": "https://youtu.be/RI-OD8c8yh8"
+                    "video_url": "https://youtu.be/RI-OD8c8yh8",
+                    "reflection_prompt": "We discussed the danger of 'Mimesis' (Imitation). Socrates says that if you imitate a bad character (even in acting or play), it stains your soul. Think about the personas people adopt online. By pretending to be something we aren't for 'likes,' do we eventually become the mask? How have you seen this happen in your own life?"
                 }
             ]
         },
@@ -250,7 +278,8 @@ def seed_data():
                     "title": "Reason, Spirit, and Appetite",
                     "episode_idx": None,
                     "republic_book": "BOOK IV",
-                    "video_url": "https://youtu.be/1UK2tILzl4Y"
+                    "video_url": "https://youtu.be/1UK2tILzl4Y",
+                    "reflection_prompt": "Plato maps the soul into three parts: Reason (The Driver), Spirit (The Chest), and Appetite (The Belly/Genitals). When you look at your biggest regrets in life, which part of your soul took the wheel? Analyze a time you 'lost control.' Was it a failure of Reason, or a rebellion of the Appetite? How do you get the Driver back in charge?"
                 }
             ]
         },
@@ -261,7 +290,8 @@ def seed_data():
                     "title": "Philosophers Must Become Kings",
                     "episode_idx": None,
                     "republic_book": "BOOK V",
-                    "video_url": "https://youtu.be/GqIwXPGIrg8"
+                    "video_url": "https://youtu.be/GqIwXPGIrg8",
+                    "reflection_prompt": "Socrates argues that to kill nepotism and corruption, we must abolish the nuclear family. If I treat my son better than your son, Justice is impossible. It sounds horrific, but is his diagnosis right? Is 'Love of One's Own' (Tribalism/Family) the ultimate enemy of 'Universal Justice'? Can you be a good citizen and a good parent at the same time?"
                 }
             ]
         },
@@ -272,7 +302,8 @@ def seed_data():
                     "title": "Knowledge vs. Opinion",
                     "episode_idx": None,
                     "republic_book": "BOOK VI",
-                    "video_url": ""
+                    "video_url": "",
+                    "reflection_prompt": "Reflect on the key theme of this book. How does it challenge your current worldview?"
                 }
             ]
         },
@@ -283,7 +314,8 @@ def seed_data():
                     "title": "From Shadows to Sunlight",
                     "episode_idx": None,
                     "republic_book": "BOOK VII",
-                    "video_url": ""
+                    "video_url": "",
+                    "reflection_prompt": "Reflect on the key theme of this book. How does it challenge your current worldview?"
                 }
             ]
         },
@@ -317,9 +349,9 @@ def seed_data():
                     summary = book_text[:500] + "..." if len(book_text) > 500 else book_text
 
             cur.execute(
-                "INSERT INTO py_lessons (module_id, title, audio_url, video_url, transcript_text, summary, sort_order) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (module_id, les["title"], "", les.get("video_url", ""), transcript, summary, les_idx)
+                "INSERT INTO py_lessons (module_id, title, audio_url, video_url, reflection_prompt, transcript_text, summary, sort_order) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (module_id, les["title"], "", les.get("video_url", ""), les.get("reflection_prompt", ""), transcript, summary, les_idx)
             )
 
     cur.close()
@@ -662,6 +694,166 @@ def send_message(convo_id):
             conn.close()
             status = 429 if '429' in error_str else 500
             return jsonify({'message': f'AI error: {error_str}'}), status
+
+
+# --- Reflection & Progress API Routes ---
+
+@app.route('/api/lessons/<int:lesson_id>/reflection', methods=['GET'])
+@login_required
+def get_reflection(lesson_id):
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        'SELECT * FROM py_user_reflections WHERE user_id = %s AND lesson_id = %s',
+        (current_user.id, lesson_id)
+    )
+    reflection = cur.fetchone()
+    cur.close()
+    conn.close()
+    if reflection:
+        return jsonify(dict(reflection))
+    return jsonify(None)
+
+
+@app.route('/api/lessons/<int:lesson_id>/reflection', methods=['POST'])
+@login_required
+def submit_reflection(lesson_id):
+    data = request.get_json()
+    answer = data.get('answer', '').strip()
+    if not answer:
+        return jsonify({'message': 'Answer is required'}), 400
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute('''
+        SELECT l.title as lesson_title, l.reflection_prompt, l.transcript_text,
+               m.title as module_title, c.title as course_title
+        FROM py_lessons l
+        JOIN py_modules m ON l.module_id = m.id
+        JOIN py_courses c ON m.course_id = c.id
+        WHERE l.id = %s
+    ''', (lesson_id,))
+    lesson = cur.fetchone()
+    if not lesson:
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Lesson not found'}), 404
+
+    student_name = current_user.name or ""
+    student_line = ""
+    if student_name:
+        student_line = f"The student's name is {student_name}. Address them by first name when natural.\n\n"
+
+    transcript = lesson['transcript_text'] or ''
+    if len(transcript) > 100000:
+        transcript = transcript[:100000] + "\n\n[... truncated ...]"
+
+    analysis_prompt = (
+        "You are DavOS \u2014 a sharp, erudite AI tutor modeled after a stern but brilliant philosophy professor. "
+        "Your tone is dark, academic, and precise. You do not perform enthusiasm.\n\n"
+        f"{student_line}"
+        "YOUR TASK: Analyze this student's reflection on a Socratic prompt. "
+        "Do NOT grade it. Instead, identify ONE hidden assumption in their answer "
+        "and ask a single piercing follow-up question that forces them to examine that assumption.\n\n"
+        "RULES:\n"
+        "1. Keep your response to 3-4 sentences maximum.\n"
+        "2. No cheerleading. No 'Great answer!' or 'I love that.'\n"
+        "3. Be intellectually ruthless but respectful.\n"
+        "4. Ground your analysis in the lesson material when possible.\n\n"
+        f"LESSON: {lesson['lesson_title']} (Module: {lesson['module_title']})\n"
+        f"REFLECTION PROMPT: {lesson['reflection_prompt']}\n\n"
+        f"--- LESSON TRANSCRIPT (for reference) ---\n{transcript}\n--- END ---\n\n"
+        f"STUDENT'S REFLECTION:\n{answer}"
+    )
+
+    feedback = ""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(analysis_prompt)
+            feedback = response.text
+            break
+        except Exception as e:
+            error_str = str(e)
+            if '429' in error_str and attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            cur.close()
+            conn.close()
+            status = 429 if '429' in error_str else 500
+            return jsonify({'message': f'AI error: {error_str}'}), status
+
+    cur.execute('''
+        INSERT INTO py_user_reflections (user_id, lesson_id, answer, feedback)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (user_id, lesson_id) DO UPDATE SET answer = %s, feedback = %s, created_at = CURRENT_TIMESTAMP
+        RETURNING *
+    ''', (current_user.id, lesson_id, answer, feedback, answer, feedback))
+    reflection = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify(dict(reflection))
+
+
+@app.route('/api/lessons/<int:lesson_id>/progress', methods=['GET'])
+@login_required
+def get_progress(lesson_id):
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        'SELECT * FROM py_user_progress WHERE user_id = %s AND lesson_id = %s',
+        (current_user.id, lesson_id)
+    )
+    progress = cur.fetchone()
+    cur.close()
+    conn.close()
+    if progress:
+        return jsonify(dict(progress))
+    return jsonify({'is_completed': False})
+
+
+@app.route('/api/lessons/<int:lesson_id>/progress', methods=['POST'])
+@login_required
+def toggle_progress(lesson_id):
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        'SELECT * FROM py_user_progress WHERE user_id = %s AND lesson_id = %s',
+        (current_user.id, lesson_id)
+    )
+    existing = cur.fetchone()
+    if existing:
+        new_status = not existing['is_completed']
+        cur.execute(
+            'UPDATE py_user_progress SET is_completed = %s, completed_at = %s WHERE id = %s RETURNING *',
+            (new_status, datetime.now() if new_status else None, existing['id'])
+        )
+    else:
+        cur.execute(
+            'INSERT INTO py_user_progress (user_id, lesson_id, is_completed, completed_at) VALUES (%s, %s, TRUE, %s) RETURNING *',
+            (current_user.id, lesson_id, datetime.now())
+        )
+    progress = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify(dict(progress))
+
+
+@app.route('/api/progress', methods=['GET'])
+@login_required
+def get_all_progress():
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        'SELECT lesson_id, is_completed FROM py_user_progress WHERE user_id = %s AND is_completed = TRUE',
+        (current_user.id,)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    completed = [r['lesson_id'] for r in rows]
+    return jsonify(completed)
 
 
 if __name__ == '__main__':

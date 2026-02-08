@@ -1,0 +1,30 @@
+BUILD PHASE: SOCRATIC REFLECTION & PROGRESS TRACKING
+I am ready to turn the passive lesson view into an active workshop.
+1. Database Schema Update:
+* Reflections: Add a reflection_prompt (Text) column to the Lesson table.
+* User Data: Create a UserReflection table linking user_id and lesson_id to store the user's answer and DavOS's feedback.
+* Progress: Create a UserProgress table (or link) to track is_completed (Boolean) for each lesson.
+2. Seed Data Injection (The Prompts):
+* Please update the seed.py script to map these specific prompts to the correct lessons:
+    * Intro: "We often think of the past as 'primitive' and the present as 'enlightened.' But Socrates argues that human nature never changes—only the technology does. Look at the current political chaos in the world. Is it new? Or are we just re-living the same cycles of Athens? If human nature is fixed, can we ever truly 'progress,' or are we doomed to repeat history?"
+    * Book 1: "Polemarchus defines Justice as 'doing good to friends and harm to enemies.' This is the basis of Tribalism (and modern partisan politics). Socrates rejects this. Why? Is it possible to have a society where we don't favor our 'tribe' (our party/nation) over others? Is true impartiality actually possible for human beings?"
+    * Book 2: "If you possessed the Ring of Gyges (total invisibility with zero consequences), would you still be a 'good' person? Be 100% honest. If you knew you could steal wealth, access power, or crush your enemies and never be caught, what would stop you? If your answer is 'nothing,' does that mean your morality is just fear of the police?"
+    * Book 3: "We discussed the danger of 'Mimesis' (Imitation). Socrates says that if you imitate a bad character (even in acting or play), it stains your soul. Think about the personas people adopt online. By pretending to be something we aren't for 'likes,' do we eventually become the mask? How have you seen this happen in your own life?"
+    * Book 4: "Plato maps the soul into three parts: Reason (The Driver), Spirit (The Chest), and Appetite (The Belly/Genitals). When you look at your biggest regrets in life, which part of your soul took the wheel? Analyze a time you 'lost control.' Was it a failure of Reason, or a rebellion of the Appetite? How do you get the Driver back in charge?"
+    * Book 5: "Socrates argues that to kill nepotism and corruption, we must abolish the nuclear family. If I treat my son better than your son, Justice is impossible. It sounds horrific, but is his diagnosis right? Is 'Love of One's Own' (Tribalism/Family) the ultimate enemy of 'Universal Justice'? Can you be a good citizen and a good parent at the same time?"
+    * Books 6-10: Use this placeholder: "Reflect on the key theme of this book. How does it challenge your current worldview?"
+3. UI Implementation (The Socratic Mirror):
+* Location: Place a "Socratic Challenge" card directly below the Video/Transcript.
+* Function: Show the specific prompt for that lesson. Provide a text box for the answer.
+* The AI Analyst: When the user submits, send it to DavOS.
+    * System Instruction: "You are DavOS. Analyze this student's reflection. Do not grade it. Instead, identify one hidden assumption in their answer and ask a piercing follow-up question."
+    * Display DavOS's response immediately.
+4. Progress Tracking (The Checkmark):
+* Add a "Mark Lesson Complete" button at the bottom.
+* When clicked, toggle the status in the database.
+* Visuals: Add a Green Checkmark (or distinct icon) next to the Lesson Name in the Sidebar for completed lessons.
+5. Execution:
+* Update the database.
+* Run the seed script to load these new prompts.
+* Ensure the UI updates dynamically.
+
