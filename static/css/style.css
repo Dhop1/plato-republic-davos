@@ -294,13 +294,19 @@ a:hover { color: var(--text-primary); }
 }
 
 .nav-lessons li a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 20px 8px 32px;
   font-family: var(--font-sans);
   font-size: 0.82rem;
   color: var(--text-tertiary);
   transition: background 0.15s, color 0.15s;
   border-left: 2px solid transparent;
+}
+
+.nav-lessons li a .lesson-check {
+  flex-shrink: 0;
 }
 
 .nav-lessons li a:hover {
@@ -407,10 +413,13 @@ a:hover { color: var(--text-primary); }
   height: 36px;
 }
 
-.transcript-area {
+.content-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 40px 60px;
+}
+
+.transcript-area {
+  padding: 32px 40px 24px;
 }
 
 .transcript-text {
@@ -447,6 +456,185 @@ a:hover { color: var(--text-primary); }
   border: none;
   border-top: 1px solid var(--border-color);
   margin: 24px 0;
+}
+
+
+/* Socratic Challenge */
+.socratic-challenge {
+  padding: 0 40px 24px;
+  flex-shrink: 0;
+}
+
+.socratic-challenge .socratic-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--accent-gold);
+}
+
+.socratic-challenge .socratic-header h3 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--accent-gold);
+}
+
+.socratic-prompt {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 700px;
+  padding: 16px 20px;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--accent-gold);
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 16px;
+}
+
+.reflection-textarea {
+  width: 100%;
+  max-width: 700px;
+  padding: 14px 16px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.reflection-textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.reflection-submit-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 24px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bg-primary);
+  background: var(--accent-gold);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.reflection-submit-btn:hover {
+  opacity: 0.9;
+}
+
+.reflection-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reflection-feedback {
+  max-width: 700px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.feedback-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+}
+
+.feedback-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.feedback-body {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.feedback-answer {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.feedback-answer-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.feedback-answer div {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+
+/* Lesson Complete Bar */
+.lesson-complete-bar {
+  padding: 16px 40px 24px;
+  flex-shrink: 0;
+}
+
+.btn-mark-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-mark-complete:hover {
+  border-color: #4a7c59;
+  color: #4a7c59;
+}
+
+.btn-mark-complete.completed {
+  border-color: #4a7c59;
+  background: rgba(74, 124, 89, 0.1);
+  color: #4a7c59;
 }
 
 
@@ -1036,6 +1224,14 @@ a:hover { color: var(--text-primary); }
 
   .transcript-area {
     padding: 20px;
+  }
+
+  .socratic-challenge {
+    padding: 0 20px 20px;
+  }
+
+  .lesson-complete-bar {
+    padding: 16px 20px 24px;
   }
 
   .landing-hero h1 {

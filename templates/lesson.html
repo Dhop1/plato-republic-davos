@@ -32,8 +32,40 @@
             <audio id="audio-player" controls></audio>
         </div>
 
-        <div class="transcript-area" id="transcript-area" data-testid="transcript-area">
-            <div class="spinner-wrap"><div class="spinner"></div></div>
+        <div class="content-scroll" id="content-scroll">
+            <div class="transcript-area" id="transcript-area" data-testid="transcript-area">
+                <div class="spinner-wrap"><div class="spinner"></div></div>
+            </div>
+
+            <div class="socratic-challenge" id="socratic-challenge" style="display:none;" data-testid="socratic-challenge">
+                <div class="socratic-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    <h3>Socratic Challenge</h3>
+                </div>
+                <p class="socratic-prompt" id="socratic-prompt" data-testid="text-socratic-prompt"></p>
+                <div id="reflection-form" data-testid="reflection-form">
+                    <textarea id="reflection-input" class="reflection-textarea" placeholder="Write your reflection here..." rows="5" data-testid="input-reflection"></textarea>
+                    <button id="reflection-submit" class="reflection-submit-btn" data-testid="button-submit-reflection">Submit Reflection</button>
+                </div>
+                <div id="reflection-feedback" class="reflection-feedback" style="display:none;" data-testid="reflection-feedback">
+                    <div class="feedback-header">
+                        <div class="feedback-avatar">D</div>
+                        <span>DavOS Analysis</span>
+                    </div>
+                    <div class="feedback-body" id="feedback-body" data-testid="text-feedback-body"></div>
+                    <div class="feedback-answer" id="feedback-answer-wrap" style="display:none;">
+                        <div class="feedback-answer-label">Your reflection:</div>
+                        <div id="feedback-answer" data-testid="text-feedback-answer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lesson-complete-bar" id="lesson-complete-bar" data-testid="lesson-complete-bar">
+                <button id="btn-mark-complete" class="btn-mark-complete" data-testid="button-mark-complete">
+                    <svg id="complete-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+                    <span id="complete-text" data-testid="text-complete-status">Mark Lesson Complete</span>
+                </button>
+            </div>
         </div>
     </main>
 
@@ -68,12 +100,15 @@
 const LESSON_ID = {{ lesson_id }};
 let currentConvoId = null;
 let isLoading = false;
+let completedLessons = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadLesson();
-    await loadNavTree();
+    await Promise.all([loadNavTree(), loadReflection(), loadProgress()]);
     setupChat();
     setupSidebarToggle();
+    setupReflection();
+    setupComplete();
 });
 
 function parseYouTubeId(url) {
@@ -117,6 +152,11 @@ async function loadLesson() {
     } else {
         area.innerHTML = '<div class="empty-msg">No transcript available for this lesson.</div>';
     }
+
+    if (lesson.reflection_prompt) {
+        document.getElementById('socratic-challenge').style.display = 'block';
+        document.getElementById('socratic-prompt').textContent = lesson.reflection_prompt;
+    }
 }
 
 function formatTranscript(text) {
@@ -139,9 +179,19 @@ function formatTranscript(text) {
 async function loadNavTree() {
     const lessonRes = await fetch(`/api/lessons/${LESSON_ID}`);
     const lesson = await lessonRes.json();
-    const modRes = await fetch(`/api/courses/${lesson.course_id}/modules`);
+    const [modRes, progressRes] = await Promise.all([
+        fetch(`/api/courses/${lesson.course_id}/modules`),
+        fetch('/api/progress')
+    ]);
     const modules = await modRes.json();
+    if (progressRes.ok) {
+        completedLessons = await progressRes.json();
+    }
 
+    renderNavTree(modules);
+}
+
+function renderNavTree(modules) {
     const tree = document.getElementById('nav-tree');
     let html = '';
     modules.forEach(mod => {
@@ -152,7 +202,9 @@ async function loadNavTree() {
         if (mod.lessons) {
             mod.lessons.forEach(les => {
                 const isCurrent = les.id === LESSON_ID;
-                html += `<li><a href="/lesson/${les.id}" class="${isCurrent ? 'current' : ''}" data-testid="nav-lesson-${les.id}">${les.title}</a></li>`;
+                const isComplete = completedLessons.includes(les.id);
+                const checkmark = isComplete ? '<svg class="lesson-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>' : '';
+                html += `<li><a href="/lesson/${les.id}" class="${isCurrent ? 'current' : ''} ${isComplete ? 'completed' : ''}" data-testid="nav-lesson-${les.id}">${checkmark}${les.title}</a></li>`;
             });
         }
         html += '</ul></div>';
@@ -163,6 +215,128 @@ async function loadNavTree() {
         btn.addEventListener('click', () => {
             btn.parentElement.classList.toggle('open');
         });
+    });
+}
+
+async function loadReflection() {
+    try {
+        const res = await fetch(`/api/lessons/${LESSON_ID}/reflection`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.answer) {
+            showExistingReflection(data.answer, data.feedback);
+        }
+    } catch (e) {}
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function showExistingReflection(answer, feedback) {
+    const form = document.getElementById('reflection-form');
+    const feedbackEl = document.getElementById('reflection-feedback');
+    form.style.display = 'none';
+    feedbackEl.style.display = 'block';
+
+    const safe = escapeHtml(feedback || '');
+    const formatted = safe
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    document.getElementById('feedback-body').innerHTML = formatted;
+
+    document.getElementById('feedback-answer-wrap').style.display = 'block';
+    document.getElementById('feedback-answer').textContent = answer;
+}
+
+function setupReflection() {
+    const btn = document.getElementById('reflection-submit');
+    const input = document.getElementById('reflection-input');
+    btn.addEventListener('click', async () => {
+        const answer = input.value.trim();
+        if (!answer) return;
+
+        btn.disabled = true;
+        btn.textContent = 'DavOS is analyzing...';
+
+        try {
+            const res = await fetch(`/api/lessons/${LESSON_ID}/reflection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ answer })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                showToast(err.message || 'Failed to submit reflection', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Submit Reflection';
+                return;
+            }
+            const data = await res.json();
+            showExistingReflection(data.answer, data.feedback);
+        } catch (err) {
+            showToast('Failed to submit reflection', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Submit Reflection';
+        }
+    });
+}
+
+async function loadProgress() {
+    try {
+        const res = await fetch(`/api/lessons/${LESSON_ID}/progress`);
+        if (!res.ok) return;
+        const data = await res.json();
+        updateCompleteButton(data.is_completed);
+    } catch (e) {}
+}
+
+function updateCompleteButton(isCompleted) {
+    const btn = document.getElementById('btn-mark-complete');
+    const text = document.getElementById('complete-text');
+    const icon = document.getElementById('complete-icon');
+    if (isCompleted) {
+        btn.classList.add('completed');
+        text.textContent = 'Lesson Completed';
+        icon.style.stroke = '#4a7c59';
+        icon.querySelector('circle').setAttribute('fill', '#4a7c59');
+        icon.querySelector('path').setAttribute('stroke', '#f5f0e8');
+    } else {
+        btn.classList.remove('completed');
+        text.textContent = 'Mark Lesson Complete';
+        icon.style.stroke = 'currentColor';
+        icon.querySelector('circle').setAttribute('fill', 'none');
+        icon.querySelector('path').setAttribute('stroke', 'currentColor');
+    }
+}
+
+function setupComplete() {
+    document.getElementById('btn-mark-complete').addEventListener('click', async () => {
+        try {
+            const res = await fetch(`/api/lessons/${LESSON_ID}/progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            updateCompleteButton(data.is_completed);
+
+            if (data.is_completed) {
+                if (!completedLessons.includes(LESSON_ID)) completedLessons.push(LESSON_ID);
+            } else {
+                completedLessons = completedLessons.filter(id => id !== LESSON_ID);
+            }
+
+            const lessonRes = await fetch(`/api/lessons/${LESSON_ID}`);
+            const lesson = await lessonRes.json();
+            const modRes = await fetch(`/api/courses/${lesson.course_id}/modules`);
+            const modules = await modRes.json();
+            renderNavTree(modules);
+        } catch (err) {
+            showToast('Failed to update progress', 'error');
+        }
     });
 }
 

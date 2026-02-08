@@ -719,9 +719,13 @@ def get_reflection(lesson_id):
 @login_required
 def submit_reflection(lesson_id):
     data = request.get_json()
+    if not data:
+        return jsonify({'message': 'Invalid request'}), 400
     answer = data.get('answer', '').strip()
     if not answer:
         return jsonify({'message': 'Answer is required'}), 400
+    if len(answer) > 5000:
+        return jsonify({'message': 'Answer is too long (max 5000 characters)'}), 400
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
