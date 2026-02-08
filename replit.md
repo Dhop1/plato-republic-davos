@@ -26,9 +26,11 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - **py_users**: id, email (unique), password_hash, name, is_admin, unlocked_courses (JSON string), created_at
 - **py_courses**: id, title, description, cover_image_url
 - **py_modules**: id, course_id (FK), title, sort_order — one per Book of The Republic
-- **py_lessons**: id, module_id (FK), title, audio_url, video_url, transcript_text, summary, sort_order
+- **py_lessons**: id, module_id (FK), title, audio_url, video_url, transcript_text, summary, sort_order, reflection_prompt
 - **py_conversations**: id, lesson_id (FK), title
 - **py_messages**: id, conversation_id (FK), role, content
+- **py_user_reflections**: id, user_id (FK), lesson_id (FK), answer, feedback, created_at — UNIQUE(user_id, lesson_id)
+- **py_user_progress**: id, user_id (FK), lesson_id (FK), is_completed, completed_at — UNIQUE(user_id, lesson_id)
 
 ## Page Routes
 - `GET /` - Landing page (public)
@@ -48,6 +50,12 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `POST /api/conversations` - Create conversation (JSON: {title, lessonId})
 - `GET /api/conversations/:id` - Get conversation with messages
 - `POST /api/conversations/:id/messages` - Send message to DavOS AI tutor
+- `POST /api/conversations/:id/messages/inject` - Inject a message into conversation history (JSON: {role, content})
+- `GET /api/lessons/:id/reflection` - Get user's reflection for a lesson (login required)
+- `POST /api/lessons/:id/reflection` - Submit reflection for DavOS analysis (JSON: {answer}, login required)
+- `GET /api/lessons/:id/progress` - Get completion status (login required)
+- `POST /api/lessons/:id/progress` - Toggle lesson completion (login required)
+- `GET /api/progress` - List all completed lesson IDs for current user (login required)
 
 ## AI Prompt System
 - **Persona**: "DavOS" — stern, erudite AI tutor; dark academic tone; no cheerleader phrases
@@ -68,9 +76,9 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 ## UI Layout
 - **Landing page**: Hero section with course title, module grid with lesson links, auth nav
 - **Lesson page**: 3-column layout
-  - Left sidebar (260px): Collapsible accordion of modules with lesson links, auth links
-  - Center: Sticky header with lesson/module title, scrollable transcript reader
-  - Right sidebar (340px): DavOS chat widget, always open
+  - Left sidebar (260px): Collapsible accordion of modules with lesson links (green checkmarks for completed), auth links
+  - Center: Sticky header with lesson/module title, YouTube video embed (if available), scrollable transcript reader
+  - Right sidebar (340px): DavOS header, Control Deck (Start Socratic Challenge + Mark Lesson Complete buttons), chat messages, chat input
 - **Auth pages**: Centered card forms with Dark Academia styling
 - **Profile page**: Avatar initial, account details, active courses list
 

@@ -588,6 +588,35 @@ def get_conversation(convo_id):
     return jsonify(result)
 
 
+@app.route('/api/conversations/<int:convo_id>/messages/inject', methods=['POST'])
+@login_required
+def inject_message(convo_id):
+    data = request.get_json()
+    role = data.get('role', 'model')
+    content = data.get('content', '')
+    if not content.strip():
+        return jsonify({'message': 'Content is required'}), 400
+    if role not in ('user', 'model'):
+        return jsonify({'message': 'Invalid role'}), 400
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('SELECT * FROM py_conversations WHERE id = %s', (convo_id,))
+    convo = cur.fetchone()
+    if not convo:
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Conversation not found'}), 404
+    cur.execute(
+        'INSERT INTO py_messages (conversation_id, role, content) VALUES (%s, %s, %s) RETURNING *',
+        (convo_id, role, content)
+    )
+    msg = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify(dict(msg)), 201
+
+
 @app.route('/api/conversations/<int:convo_id>/messages', methods=['POST'])
 def send_message(convo_id):
     data = request.get_json()
