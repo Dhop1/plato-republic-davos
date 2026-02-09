@@ -23,7 +23,7 @@ def unauthorized():
         return jsonify({'message': 'Authentication required'}), 401
     return redirect(url_for('login_page', next=request.path))
 
-genai.configure(api_key=os.environ['AI_INTEGRATIONS_GEMINI_API_KEY'])
+genai.configure(api_key=os.environ.get('GEMINI_API_KEY', os.environ.get('AI_INTEGRATIONS_GEMINI_API_KEY', '')))
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 
