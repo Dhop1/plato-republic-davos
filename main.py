@@ -24,7 +24,7 @@ def unauthorized():
     return redirect(url_for('login_page', next=request.path))
 
 genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 
 class User(UserMixin):
@@ -716,8 +716,8 @@ def send_message(convo_id):
                 f"--- TRANSCRIPT ---\n{transcript}\n--- END TRANSCRIPT ---\n\n"
             )
 
-    cur.execute('SELECT role, content FROM py_messages WHERE conversation_id = %s ORDER BY created_at ASC', (convo_id,))
-    history = cur.fetchall()
+    cur.execute('SELECT role, content FROM py_messages WHERE conversation_id = %s ORDER BY created_at DESC LIMIT 11', (convo_id,))
+    history = list(reversed(cur.fetchall()))
 
     chat_history = []
     for msg in history[:-1]:
