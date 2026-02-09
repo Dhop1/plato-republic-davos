@@ -24,7 +24,7 @@ def unauthorized():
     return redirect(url_for('login_page', next=request.path))
 
 genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 
 class User(UserMixin):
