@@ -189,6 +189,16 @@ a:hover { color: var(--text-primary); }
   color: var(--text-tertiary);
 }
 
+.landing-footer a {
+  color: var(--accent-gold-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.landing-footer a:hover {
+  color: var(--accent-gold);
+}
+
 
 /* ==================== 3-COLUMN APP LAYOUT ==================== */
 
@@ -1789,5 +1799,81 @@ a:hover { color: var(--text-primary); }
 
   .agora-page .nav-links-center {
     display: none;
+  }
+}
+
+/* ── Contact Page ── */
+.contact-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: 40px 20px;
+}
+
+.contact-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 60px 50px;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.contact-name {
+  font-family: var(--font-serif);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.contact-title {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--accent-gold);
+  margin-bottom: 28px;
+}
+
+.contact-body {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.contact-email-btn {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--bg-primary);
+  background: var(--accent-gold);
+  padding: 12px 32px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.contact-email-btn:hover {
+  background: var(--accent-gold-dim);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .contact-card {
+    padding: 40px 24px;
+  }
+
+  .contact-name {
+    font-size: 1.6rem;
   }
 }

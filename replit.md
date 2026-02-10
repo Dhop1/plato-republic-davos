@@ -44,6 +44,7 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `GET /admin` - Admin Dashboard (admin required, redirects non-admins to home with flash)
 - `GET /lesson/:id` - Lesson view (login required, redirects to login if unauthenticated)
 - `GET /agora` - The Agora community discussion page (login required)
+- `GET /contact` - Contact page for Dr. David Hopkins (public)
 
 ## API Routes
 - `GET /api/auth/me` - Get current user info (or null if not logged in)

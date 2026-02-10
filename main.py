@@ -457,6 +457,11 @@ def profile_page():
     return render_template('profile.html')
 
 
+@app.route('/contact')
+def contact_page():
+    return render_template('contact.html')
+
+
 @app.route('/lesson/<int:lesson_id>')
 @login_required
 def lesson_page(lesson_id):
