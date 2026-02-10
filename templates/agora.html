@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}The Agora - The Republic{% endblock %}
+
+{% block content %}
+<div class="agora-page">
+    <nav class="landing-nav">
+        <a href="/" class="nav-brand" data-testid="link-home"><span>The</span> Republic</a>
+        <div class="nav-links-center">
+            <a href="/" class="nav-auth-link" data-testid="link-home-nav">Home</a>
+            <a href="/agora" class="nav-auth-link active" data-testid="link-agora-nav">The Agora</a>
+        </div>
+        <div class="nav-auth" id="nav-auth" data-testid="nav-auth"></div>
+    </nav>
+
+    <div class="agora-hero">
+        <img src="/static/images/uploads/agora_sketch.jpg" alt="The Ancient Agora" class="agora-hero-img" data-testid="img-agora-hero">
+        <div class="agora-hero-overlay"></div>
+    </div>
+
+    <div class="agora-intro">
+        <p class="agora-quote" data-testid="text-agora-quote">
+            In Ancient Athens, the Agora was not just a marketplace for goods, but for ideas.
+            It was the beating heart of the city&mdash;a chaotic, loud, and sacred space where
+            philosophers, politicians, and citizens collided. Step into the square. Speak your truth. Defend it.
+        </p>
+    </div>
+
+    <div class="agora-content">
+        <div class="agora-compose" data-testid="compose-post">
+            <h3>Speak Your Mind</h3>
+            <textarea id="post-content" placeholder="What truth are you wrestling with today?" maxlength="2000" data-testid="input-post-content"></textarea>
+            <div class="compose-footer">
+                <span class="char-count" id="char-count">0 / 2000</span>
+                <button class="btn-post" id="btn-post" data-testid="button-post">Post to the Agora</button>
+            </div>
+        </div>
+
+        <div class="agora-feed" id="agora-feed" data-testid="feed-agora">
+            <div class="spinner-wrap"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const feed = document.getElementById('agora-feed');
+    const postContent = document.getElementById('post-content');
+    const btnPost = document.getElementById('btn-post');
+    const charCount = document.getElementById('char-count');
+    let currentUser = null;
+
+    postContent.addEventListener('input', () => {
+        charCount.textContent = postContent.value.length + ' / 2000';
+    });
+
+    async function loadUser() {
+        try {
+            const res = await fetch('/api/auth/me');
+            currentUser = await res.json();
+        } catch(e) {}
+    }
+
+    function timeAgo(dateStr) {
+        const now = new Date();
+        const date = new Date(dateStr);
+        const seconds = Math.floor((now - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return minutes + 'm ago';
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + 'h ago';
+        const days = Math.floor(hours / 24);
+        if (days < 30) return days + 'd ago';
+        return date.toLocaleDateString();
+    }
+
+    function getInitial(name) {
+        return (name || '?')[0].toUpperCase();
+    }
+
+    function renderPost(post, isReply) {
+        const canDelete = currentUser && (currentUser.id === post.user_id || currentUser.is_admin);
+        const replyClass = isReply ? ' agora-reply' : '';
+        return `
+            <div class="agora-post${replyClass}" data-post-id="${post.id}" data-testid="post-${post.id}">
+                <div class="post-header">
+                    <div class="post-avatar" data-testid="avatar-${post.id}">${getInitial(post.user_name)}</div>
+                    <div class="post-meta">
+                        <span class="post-author" data-testid="text-author-${post.id}">${post.user_name}</span>
+                        <span class="post-time" data-testid="text-time-${post.id}">${timeAgo(post.created_at)}</span>
+                    </div>
+                    ${canDelete ? `<button class="btn-delete-post" data-id="${post.id}" title="Delete" data-testid="button-delete-${post.id}">&times;</button>` : ''}
+                </div>
+                <div class="post-body" data-testid="text-content-${post.id}">${escapeHtml(post.content)}</div>
+                <div class="post-actions">
+                    <button class="btn-reply" data-id="${post.id}" data-testid="button-reply-${post.id}">Reply</button>
+                </div>
+                <div class="reply-form-area" id="reply-form-${post.id}" style="display:none;">
+                    <textarea class="reply-input" placeholder="Your reply..." maxlength="2000" data-testid="input-reply-${post.id}"></textarea>
+                    <div class="reply-actions">
+                        <button class="btn-cancel-reply" data-id="${post.id}" data-testid="button-cancel-reply-${post.id}">Cancel</button>
+                        <button class="btn-submit-reply" data-id="${post.id}" data-testid="button-submit-reply-${post.id}">Reply</button>
+                    </div>
+                </div>
+                <div class="replies-container" id="replies-${post.id}"></div>
+            </div>
+        `;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML.replace(/\n/g, '<br>');
+    }
+
+    async function loadPosts() {
+        try {
+            const res = await fetch('/api/agora/posts');
+            const posts = await res.json();
+
+            const topLevel = posts.filter(p => !p.parent_id);
+            const replies = posts.filter(p => p.parent_id);
+
+            const replyMap = {};
+            replies.forEach(r => {
+                if (!replyMap[r.parent_id]) replyMap[r.parent_id] = [];
+                replyMap[r.parent_id].push(r);
+            });
+
+            if (topLevel.length === 0) {
+                feed.innerHTML = '<p class="empty-feed" data-testid="text-empty-feed">The Agora is quiet. Be the first to speak.</p>';
+                return;
+            }
+
+            let html = '';
+            topLevel.forEach(post => {
+                html += renderPost(post, false);
+            });
+            feed.innerHTML = html;
+
+            topLevel.forEach(post => {
+                const container = document.getElementById('replies-' + post.id);
+                if (replyMap[post.id]) {
+                    replyMap[post.id].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    replyMap[post.id].forEach(reply => {
+                        container.innerHTML += renderPost(reply, true);
+                    });
+                }
+            });
+
+            attachEventListeners();
+        } catch(e) {
+            feed.innerHTML = '<p class="empty-feed">Failed to load posts.</p>';
+        }
+    }
+
+    function attachEventListeners() {
+        document.querySelectorAll('.btn-reply').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const form = document.getElementById('reply-form-' + id);
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            });
+        });
+
+        document.querySelectorAll('.btn-cancel-reply').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                document.getElementById('reply-form-' + id).style.display = 'none';
+            });
+        });
+
+        document.querySelectorAll('.btn-submit-reply').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const parentId = parseInt(btn.dataset.id);
+                const form = document.getElementById('reply-form-' + parentId);
+                const textarea = form.querySelector('.reply-input');
+                const content = textarea.value.trim();
+                if (!content) return;
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/agora/posts', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({content, parent_id: parentId})
+                    });
+                    if (res.ok) {
+                        loadPosts();
+                    } else {
+                        const err = await res.json();
+                        showToast(err.error || 'Failed to reply', 'error');
+                    }
+                } catch(e) {
+                    showToast('Network error', 'error');
+                }
+                btn.disabled = false;
+            });
+        });
+
+        document.querySelectorAll('.btn-delete-post').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                if (!confirm('Delete this post?')) return;
+                try {
+                    const res = await fetch('/api/agora/posts/' + id, {method: 'DELETE'});
+                    if (res.ok) {
+                        loadPosts();
+                    } else {
+                        showToast('Failed to delete', 'error');
+                    }
+                } catch(e) {
+                    showToast('Network error', 'error');
+                }
+            });
+        });
+    }
+
+    btnPost.addEventListener('click', async () => {
+        const content = postContent.value.trim();
+        if (!content) {
+            showToast('Write something first', 'error');
+            return;
+        }
+        btnPost.disabled = true;
+        try {
+            const res = await fetch('/api/agora/posts', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content})
+            });
+            if (res.ok) {
+                postContent.value = '';
+                charCount.textContent = '0 / 2000';
+                loadPosts();
+            } else {
+                const err = await res.json();
+                showToast(err.error || 'Failed to post', 'error');
+            }
+        } catch(e) {
+            showToast('Network error', 'error');
+        }
+        btnPost.disabled = false;
+    });
+
+    loadUser().then(() => loadPosts());
+});
+</script>
+{% endblock %}

@@ -81,6 +81,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/logout", proxyToFlask);
   app.get("/profile", proxyToFlask);
   app.get("/admin", proxyToFlask);
+  app.get("/agora", proxyToFlask);
   app.get("/", proxyToFlask);
 
   return httpServer;

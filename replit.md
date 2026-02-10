@@ -33,6 +33,7 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - **py_messages**: id, conversation_id (FK), role, content
 - **py_user_reflections**: id, user_id (FK), lesson_id (FK), answer, feedback, created_at — UNIQUE(user_id, lesson_id)
 - **py_user_progress**: id, user_id (FK), lesson_id (FK), is_completed, completed_at — UNIQUE(user_id, lesson_id)
+- **py_agora_posts**: id, user_id (FK), content, parent_id (FK nullable, self-referencing for replies), created_at
 
 ## Page Routes
 - `GET /` - Landing page (public)
@@ -42,6 +43,7 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `GET /profile` - Citizen Profile page (login required)
 - `GET /admin` - Admin Dashboard (admin required, redirects non-admins to home with flash)
 - `GET /lesson/:id` - Lesson view (login required, redirects to login if unauthenticated)
+- `GET /agora` - The Agora community discussion page (login required)
 
 ## API Routes
 - `GET /api/auth/me` - Get current user info (or null if not logged in)
@@ -61,6 +63,9 @@ A Dark Academia-themed course platform for studying Plato's "The Republic" with 
 - `GET /api/lessons/:id/progress` - Get completion status (login required)
 - `POST /api/lessons/:id/progress` - Toggle lesson completion (login required)
 - `GET /api/progress` - List all completed lesson IDs for current user (login required)
+- `GET /api/agora/posts` - List all Agora posts with user names (login required)
+- `POST /api/agora/posts` - Create post or reply (JSON: {content, parent_id?}, login required)
+- `DELETE /api/agora/posts/:id` - Delete post (owner or admin, login required)
 
 ## AI Prompt System (DavOS Protocol v3.5 — The Spiritual Spotter)
 - **Core Identity**: "The Spiritual Spotter" — intellectual coach who helps students lift heavy ideas, encouraging and warm but intolerant of laziness. Digital twin of Dr. David Hopkins.

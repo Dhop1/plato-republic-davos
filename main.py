@@ -76,6 +76,16 @@ def init_db():
         )
     ''')
 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS py_agora_posts (
+            id SERIAL PRIMARY KEY,
+            content TEXT NOT NULL,
+            user_id INTEGER REFERENCES py_users(id) ON DELETE CASCADE,
+            parent_id INTEGER REFERENCES py_agora_posts(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='py_lessons')")
     tables_exist = cur.fetchone()[0]
 
@@ -949,6 +959,92 @@ def get_all_progress():
     conn.close()
     completed = [r['lesson_id'] for r in rows]
     return jsonify(completed)
+
+
+# --- The Agora (Community) ---
+
+@app.route('/agora')
+@login_required
+def agora_page():
+    return render_template('agora.html')
+
+
+@app.route('/api/agora/posts', methods=['GET'])
+@login_required
+def get_agora_posts():
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('''
+        SELECT p.id, p.content, p.user_id, p.parent_id, p.created_at,
+               u.name as user_name
+        FROM py_agora_posts p
+        JOIN py_users u ON p.user_id = u.id
+        ORDER BY p.created_at DESC
+    ''')
+    posts = cur.fetchall()
+    cur.close()
+    conn.close()
+    result = []
+    for p in posts:
+        result.append({
+            'id': p['id'],
+            'content': p['content'],
+            'user_id': p['user_id'],
+            'parent_id': p['parent_id'],
+            'created_at': p['created_at'].isoformat() if p['created_at'] else None,
+            'user_name': p['user_name'],
+        })
+    return jsonify(result)
+
+
+@app.route('/api/agora/posts', methods=['POST'])
+@login_required
+def create_agora_post():
+    data = request.get_json()
+    content = (data or {}).get('content', '').strip()
+    parent_id = (data or {}).get('parent_id')
+    if not content:
+        return jsonify({'error': 'Content is required'}), 400
+    if len(content) > 2000:
+        return jsonify({'error': 'Post must be under 2000 characters'}), 400
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        'INSERT INTO py_agora_posts (content, user_id, parent_id) VALUES (%s, %s, %s) RETURNING *',
+        (content, current_user.id, parent_id)
+    )
+    post = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify({
+        'id': post['id'],
+        'content': post['content'],
+        'user_id': post['user_id'],
+        'parent_id': post['parent_id'],
+        'created_at': post['created_at'].isoformat() if post['created_at'] else None,
+        'user_name': current_user.name,
+    }), 201
+
+
+@app.route('/api/agora/posts/<int:post_id>', methods=['DELETE'])
+@login_required
+def delete_agora_post(post_id):
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('SELECT * FROM py_agora_posts WHERE id = %s', (post_id,))
+    post = cur.fetchone()
+    if not post:
+        cur.close()
+        conn.close()
+        return jsonify({'error': 'Post not found'}), 404
+    if post['user_id'] != current_user.id and not current_user.is_admin:
+        cur.close()
+        conn.close()
+        return jsonify({'error': 'Not authorized'}), 403
+    cur.execute('DELETE FROM py_agora_posts WHERE id = %s', (post_id,))
+    cur.close()
+    conn.close()
+    return jsonify({'message': 'Deleted'}), 200
 
 
 # --- Admin Dashboard ---
