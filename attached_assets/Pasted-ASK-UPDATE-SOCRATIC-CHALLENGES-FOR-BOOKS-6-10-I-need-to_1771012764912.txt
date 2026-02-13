@@ -1,0 +1,56 @@
+ASK: UPDATE SOCRATIC CHALLENGES FOR BOOKS 6-10
+
+I need to update the challenge (or discussion_question) column for Modules 6 through 10 with specific, formatted HTML content.
+
+1. The Content Mapping:
+
+Module 6 (Book VI):
+
+Update challenge to:
+
+HTML
+<h4>The Ship of Fools</h4>
+<p><strong>The Core Concept:</strong> The conflict between the "True Captain" (who knows the stars but is ignored) and the "Mutinous Crew" (who know nothing but know how to manipulate the mob).</p>
+<hr>
+<p><strong>The Question:</strong> "Look at the 'Leaders' in your own life—whether in your company, your local government, or your favorite social media feeds. Are you following a Captain or an Actor? Be honest: Are you rewarding people who have actual competence (the ability to steer the ship), or are you accidentally rewarding the people who just make you feel good (the people who feed the Beast)? How would your life change if you stopped clicking on the Actors and started hunting for the Stargazers?"</p>
+Module 7 (Book VII):
+
+Update challenge to:
+
+HTML
+<h4>The Allegory of the Cave</h4>
+<p><strong>The Core Concept:</strong> The "Red Pill" moment where you realize your entire reality was just shadows cast by a puppeteer.</p>
+<hr>
+<p><strong>The Question:</strong> "Socrates argues that the process of education is not 'adding sight to blind eyes,' but forcefully turning the whole soul around (Periagoge). What is one specific 'Shadow' you used to worship that you have recently realized is fake? Was it a career path? A political narrative? A definition of 'Success'? What was the moment—the specific 'glare of the sun'—that woke you up, and does a part of you still want to crawl back into the dark because it was more comfortable?"</p>
+Module 8 (Book VIII):
+
+Update challenge to:
+
+HTML
+<h4>The Cycle of Regimes</h4>
+<p><strong>The Core Concept:</strong> "Hard times create strong men." The slide from Discipline (Timocracy) to Greed (Oligarchy) to Chaos (Democracy).</p>
+<hr>
+<p><strong>The Question:</strong> "Socrates says that a City is just the Soul of its citizens written large. If we audited your life right now like a civilization, which Regime are you currently living in? Are you in a Spartan Phase (High discipline, high honor, low pleasure)? Are you in an Oligarch Phase (Grinding just to hoard money/resources)? Or are you in a Democratic Phase (The 'Supermarket Soul'—drifting from impulse to impulse with no ruler)? If you are in the Democratic phase... do you feel the 'Tyrant' (Addiction/Burnout) waiting at the door?"</p>
+Module 9 (Book IX):
+
+Update challenge to:
+
+HTML
+<h4>The Psychology of the Wolf</h4>
+<p><strong>The Core Concept:</strong> The Tyrant isn't a King; he is a Meth Addict. He is a slave to a "Master Passion" that drives him.</p>
+<hr>
+<p><strong>The Question:</strong> "We all have a 'Wolf' living in the basement. A part of us that wants what it wants right now regardless of the consequences. What is your specific 'Master Passion'? If you lost your discipline for 30 days, what is the one desire—whether it's ego, food, validation, laziness, or rage—that would take the wheel of your car? And what is one concrete thing you can do today to 'Starve that Beast' and 'Feed the Man'?"</p>
+Module 10 (Book X):
+
+Update challenge to:
+
+HTML
+<h4>The Myth of Er</h4>
+<p><strong>The Core Concept:</strong> The Choice of Lives. Odysseus choosing the "Quiet Life" over the "Main Character" script.</p>
+<hr>
+<p><strong>The Question:</strong> "Imagine you are standing in the Meadow of Judgment right now. Lachesis throws two scripts at your feet. Script A: 'The King.' You get fame, millions of dollars, and millions of followers, but you will live with constant stress, paranoia, and zero privacy. Script B: 'The Private Man.' You will never be famous. You will work a normal job. But you will have deep friendships, a quiet mind, and you will sleep soundly every night. Which script do you grab? Don't answer with what you should say. Answer with what your actions actually say. Are you chasing the King, or are you building the Private Life?"</p>
+2. Execution:
+
+Run the necessary SQL update commands to inject this HTML into the correct column for IDs 6, 7, 8, 9, and 10.
+
+Restart the server.
