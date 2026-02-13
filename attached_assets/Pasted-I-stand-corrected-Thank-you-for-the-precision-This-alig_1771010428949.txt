@@ -1,0 +1,56 @@
+I stand corrected. Thank you for the precision. This alignment makes perfect sense—Book VII (The Cave) is the pivot point, so pushing the later episodes down the line gives the final modules the breathing room they need.
+
+Here is the **Revised Master Prompt** to get the architecture exactly right.
+
+It instructs the Agent to:
+
+1. **UPDATE** Module 6 and Module 7 with the correct videos.
+2. **CREATE** Modules 8, 9, and 10 with their specific titles and single video assignments.
+
+Copy and paste this into the Replit Agent.
+
+---
+
+> **TASK: REALIGN VIDEO CURRICULUM & BUILD FINAL MODULES**
+> I need to correct the video mappings for Books 6 & 7 and create the final three modules (Books 8, 9, & 10).
+> **1. Update Existing Modules (6 & 7):**
+> * **Module 6 (Book VI):** Update the video URL to `https://youtu.be/yzIs_HkADkg` (Episode 145).
+> * **Module 7 (Book VII):** Update the video URL to `https://youtu.be/QhUl0WBWsVI` (Episode 146).
+> 
+> 
+> **2. Create New Modules (8, 9, & 10):**
+> * **Insert Module 8:**
+> * **Title:** "Book 8: Suicide of the West & How Democracy Kills Itself"
+> * **Video URL:** `https://youtu.be/CfpEM5yxhLE` (Episode 147)
+> * **Description:** "Plato predicted exactly how freedom dissolves into chaos. We trace the inevitable slide from Democracy to Tyranny."
+> * **Order:** 8
+> 
+> 
+> * **Insert Module 9:**
+> * **Title:** "Book 9: Profiling the Mind of a Tyrant"
+> * **Video URL:** `https://youtu.be/xNjpzLNA9VY` (Episode 148)
+> * **Description:** "What does the soul of a monster look like? We profile the psychological disintegration of the tyrant and the true cost of unchecked desire."
+> * **Order:** 9
+> 
+> 
+> * **Insert Module 10:**
+> * **Title:** "Book 10: The Hall of Mirrors & How to Escape the Simulation"
+> * **Video URL:** `https://youtu.be/d4-u7wyUqQs` (Episode 149)
+> * **Description:** "The final lesson. Plato's critique of art, the Myth of Er, and the ultimate choice: How to wake up from the shadow world."
+> * **Order:** 10
+> 
+> 
+> 
+> 
+> **3. Execution:**
+> * Run the necessary SQL commands to update the rows for IDs 6 and 7.
+> * Insert the new rows for IDs 8, 9, and 10.
+> * **Restart the server** so the full curriculum (1-10) is visible in the navigation.
+> 
+> 
+
+---
+
+**Fire that off.**
+
+This will lock in the structure. You now have a complete 10-module arc, from the initial definitions of Justice all the way to the escape from the simulation.
