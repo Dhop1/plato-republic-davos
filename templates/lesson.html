@@ -143,6 +143,7 @@ async function loadLesson() {
 }
 
 function formatTranscript(text) {
+    if (text.trim().startsWith('<')) return text;
     return text
         .replace(/^(# \*?\*?)(.*?)(\*?\*?\s*)$/gm, (m, pre, title, post) => {
             let clean = title.replace(/\*/g, '').trim();
@@ -325,12 +326,17 @@ function appendMessage(role, content) {
     const div = document.createElement('div');
     div.className = `msg ${role}`;
 
-    const safe = escapeHtml(content);
-    const formatted = safe
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
+    let formatted;
+    if (content.trim().startsWith('<')) {
+        formatted = content;
+    } else {
+        const safe = escapeHtml(content);
+        formatted = safe
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    }
 
     const avatar = role === 'user' ? 'You' : 'D';
     div.innerHTML = `<div class="msg-avatar ${role}">${avatar}</div><div class="msg-body">${formatted}</div>`;
