@@ -1151,6 +1151,25 @@ def admin_mind_feed():
     return jsonify(feed)
 
 
+# Auto-initialize database on first startup under gunicorn
+import threading
+_db_init_lock = threading.Lock()
+_db_initialized = False
+
+def ensure_db_initialized():
+    global _db_initialized
+    with _db_init_lock:
+        if not _db_initialized:
+            try:
+                init_db()
+                _db_initialized = True
+                print("Database initialized successfully")
+            except Exception as e:
+                print(f"Database initialization warning: {e}")
+
+# Run on startup
+ensure_db_initialized()
+
 if __name__ == '__main__':
     init_db()
     port = int(os.environ.get('FLASK_PORT', '5001'))
