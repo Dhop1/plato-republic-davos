@@ -1,4 +1,7 @@
 {
   "$schema": "https://schema.railpack.com",
-  "providers": ["python", "node"]
+  "providers": ["python", "node"],
+  "runtime": {
+    "packages": ["python", "node"]
+  }
 }
