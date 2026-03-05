@@ -1170,6 +1170,29 @@ def ensure_db_initialized():
 # Run on startup
 ensure_db_initialized()
 
+
+def backfill_module_video_urls():
+    """One-time backfill: set video_url for Book VI and VII lessons if missing."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE py_lessons SET video_url = %s WHERE module_id = (SELECT id FROM py_modules WHERE title = 'Book VI — The Divided Line' LIMIT 1) AND (video_url IS NULL OR video_url = '')",
+            ("https://youtu.be/yzIs_HkADkg",)
+        )
+        cur.execute(
+            "UPDATE py_lessons SET video_url = %s WHERE module_id = (SELECT id FROM py_modules WHERE title = 'Book VII — The Allegory of the Cave' LIMIT 1) AND (video_url IS NULL OR video_url = '')",
+            ("https://youtu.be/QhUl0WBWsVI",)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Video URL backfill warning: {e}")
+
+
+backfill_module_video_urls()
+
 if __name__ == '__main__':
     init_db()
     port = int(os.environ.get('FLASK_PORT', '5001'))
