@@ -1,6 +1,6 @@
 # 1. Start with a lightweight Python base
 FROM python:3.11-slim
-ARG CACHE_BUST=1
+ARG CACHE_BUST=2
 
 # 2. Install system dependencies and Node.js (v20)
 RUN apt-get update && apt-get install -y curl \
