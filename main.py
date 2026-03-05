@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 import psycopg2
 import psycopg2.extras
-from google import genai
+import google.generativeai as genai
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -28,8 +28,9 @@ def unauthorized():
         return jsonify({'message': 'Authentication required'}), 401
     return redirect(url_for('login_page', next=request.path))
 
-client = genai.Client(api_key=os.environ['GEMINI_API_KEY'])
-print("Using model: gemini-2.0-flash-lite")
+genai.configure(api_key=os.environ['GEMINI_API_KEY'])
+model = genai.GenerativeModel('gemini-2.5-flash')
+print("Using model: gemini-2.5-flash")
 
 
 class User(UserMixin):
@@ -767,10 +768,7 @@ def send_message(convo_id):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            chat = client.chats.create(
-                model='gemini-2.0-flash-lite',
-                history=chat_history
-            )
+            chat = model.start_chat(history=chat_history)
             response = chat.send_message(prompt)
             ai_response = response.text
 
@@ -888,10 +886,7 @@ def submit_reflection(lesson_id):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = client.models.generate_content(
-                model='gemini-2.0-flash-lite',
-                contents=analysis_prompt
-            )
+            response = model.generate_content(analysis_prompt)
             feedback = response.text
             break
         except Exception as e:
