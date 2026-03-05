@@ -318,7 +318,7 @@ def seed_data():
                     "title": "Knowledge vs. Opinion",
                     "episode_idx": None,
                     "republic_book": "BOOK VI",
-                    "video_url": "",
+                    "video_url": "https://youtu.be/yzIs_HkADkg",
                     "reflection_prompt": "Reflect on the key theme of this book. How does it challenge your current worldview?"
                 }
             ]
@@ -330,7 +330,7 @@ def seed_data():
                     "title": "From Shadows to Sunlight",
                     "episode_idx": None,
                     "republic_book": "BOOK VII",
-                    "video_url": "",
+                    "video_url": "https://youtu.be/QhUl0WBWsVI",
                     "reflection_prompt": "Reflect on the key theme of this book. How does it challenge your current worldview?"
                 }
             ]
