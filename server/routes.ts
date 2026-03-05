@@ -1,9 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { type Server } from "http";
 import http from "http";
-import { spawn } from "child_process";
 
-const FLASK_PORT = 5001;
+const FLASK_PORT = parseInt(process.env.FLASK_PORT || "5001", 10);
 
 function proxyToFlask(req: Request, res: Response) {
   const isMultipart = (req.headers["content-type"] || "").includes("multipart/form-data");
@@ -55,24 +54,7 @@ function proxyToFlask(req: Request, res: Response) {
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  const flaskProc = spawn("python", ["main.py"], {
-    cwd: process.cwd(),
-    env: { ...process.env, FLASK_PORT: String(FLASK_PORT) },
-    stdio: ["ignore", "inherit", "inherit"],
-  });
-
-  flaskProc.on("error", (err) => {
-    console.error("Failed to start Flask:", err);
-  });
-
-  flaskProc.on("exit", (code) => {
-    if (code !== null && code !== 0) {
-      console.error(`Flask process exited with code ${code}`);
-    }
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-
+  // Flask is started by start.sh (gunicorn); Node only proxies to it.
   app.all("/api/*path", proxyToFlask);
   app.get("/static/*path", proxyToFlask);
   app.get("/lesson/:id", proxyToFlask);

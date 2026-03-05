@@ -10,7 +10,12 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key')
+SESSION_SECRET = os.environ.get('SESSION_SECRET')
+if not SESSION_SECRET:
+    raise EnvironmentError(
+        "SESSION_SECRET is not set. Add it as a Railway variable."
+    )
+app.secret_key = SESSION_SECRET
 
 login_manager = LoginManager()
 login_manager.init_app(app)
